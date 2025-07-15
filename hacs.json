@@ -1,17 +1,12 @@
 {
-  "name": "Sunseeker Integration",
-  "content_in_root": false,
+  "name": "Sunseeker Lovelace Cards",
+  "content_in_root": true,
   "render_readme": true,
-  "domains": ["python_script", "lovelace"],
-  "country": "all",
-  "resources": [
-    {
-      "type": "module",
-      "url": "/custom_components/sunseeker/www/sunseeker-schedule-card.js"
-    },
-    {
-      "type": "module",
-      "url": "/custom_components/sunseeker/www/sunseeker-mower-control-card.js"
-    }
+  "description": "Custom Lovelace cards for Sunseeker integrations.",
+  "category": "plugin",
+  "file_name": "sunseeker-schedule-card.js",
+  "files": [
+    "sunseeker-schedule-card.js",
+    "sunseeker-mower-control-card.js"
   ]
 }
