@@ -1,11 +1,12 @@
 {
-  "name": "Sunseeker Lawn Mower Cards",
-  "render_readme": true,
-  "description": "Custom Lovelace cards for Sunseeker Lawn Mower integration.",
-  "category": "plugin",
-  "file_name": "dist/sunseeker-schedule-card.js",
-  "files": [
-    "dist/sunseeker-schedule-card.js",
-    "dist/sunseeker-mower-control-card.js"
-  ]
+	"name": "Sunseeker Lawn Mower Cards",
+	"render_readme": true,
+	"description": "Custom Lovelace cards for Sunseeker Lawn Mower integration.",
+	"category": "plugin",
+	"filename": "dist/sunseeker-lawn-mower-cards.js",
+	"files": [
+		"dist/sunseeker-lawn-mower-cards.js",
+		"dist/sunseeker-schedule-card.js",
+		"dist/sunseeker-mower-control-card.js"
+	]
 }
