@@ -50,6 +50,88 @@ const TRANSLATIONS = {
         camera_entity: "Entité Caméra/Image",
         header_label: "En-tête",
         show_header: "Afficher l'en-tête",
+    },
+    state_values: {
+        Standby: {
+            da: "Standby",
+            de: "Bereitschaft",
+            fr: "Veille"
+        },
+        Mowing: {
+            da: "Slår græs",
+            de: "Mähen",
+            fr: "Tonte"
+        },
+        "On the way home": {
+            da: "På vej hjem",
+            de: "Auf dem Heimweg",
+            fr: "Retour à la base"
+        },
+        "Mowing border": {
+            da: "Kanter græs",
+            de: "Rand mähen",
+            fr: "Tonte des bordures"
+        },
+        Idle: {
+            da: "Inaktiv",
+            de: "Leerlauf",
+            fr: "Inactif"
+        },
+        Working: {
+            da: "Arbejder",
+            de: "Arbeitet",
+            fr: "Travail"
+        },
+        Pause: {
+            da: "Pause",
+            de: "Pause",
+            fr: "Pause"
+        },
+        Error: {
+            da: "Fejl",
+            de: "Fehler",
+            fr: "Erreur"
+        },
+        Return: {
+            da: "Returnerer",
+            de: "Zurückkehren",
+            fr: "Retour"
+        },
+        "Return pause": {
+            da: "Return pause",
+            de: "Rückkehr Pause",
+            fr: "Pause retour"
+        },
+        Charging: {
+            da: "Lader op",
+            de: "Lädt",
+            fr: "En charge"
+        },
+        "Charging full": {
+            da: "Fuld opladning",
+            de: "Voll geladen",
+            fr: "Charge complète"
+        },
+        Offline: {
+            da: "Offline",
+            de: "Offline",
+            fr: "Hors ligne"
+        },
+        Locating: {
+            da: "Finder position",
+            de: "Position wird gesucht",
+            fr: "Localisation"
+        },
+        Stop: {
+            da: "Stoppet",
+            de: "Gestoppt",
+            fr: "Arrêté"
+        },
+        "Continue mowing": {
+            da: "Fortsæt slåning",
+            de: "Weiter mähen",
+            fr: "Continuer la tonte"
+        }
     }
 };
 
@@ -58,6 +140,16 @@ function _t(key, hass) {
         ? hass.language
         : "en";
     return TRANSLATIONS[lang]?.[key] || TRANSLATIONS["en"][key] || key;
+}
+
+// Helper to get translated mower state value
+function _stateValue(state, hass) {
+    const lang = (hass && hass.language && TRANSLATIONS[hass.language]) ? hass.language : "en";
+    const stateTranslations = TRANSLATIONS.state_values?.[state];
+    if (stateTranslations && stateTranslations[lang]) {
+        return stateTranslations[lang];
+    }
+    return state; // fallback to raw state
 }
 
 class SunseekerMowerControlCard extends HTMLElement {
@@ -176,6 +268,12 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (!this.shadowRoot) return;
         this.shadowRoot.innerHTML = `
             <style>
+                .header {
+                    font-size: 1.3em;
+                    font-weight: bold;
+                    margin-bottom: 12px;
+                    text-align: center;
+                }
                 .mower-block {
                     text-align: center;
                     margin-bottom: 18px;
@@ -242,6 +340,17 @@ class SunseekerMowerControlCard extends HTMLElement {
             <div id="card-content"></div>
         `;
 
+        const cardContent = this.shadowRoot.getElementById("card-content");
+        cardContent.innerHTML = "";
+
+        // Add header if enabled
+        if (this._showHeader) {
+            const headerDiv = document.createElement("div");
+            headerDiv.className = "header";
+            headerDiv.textContent = this._header;
+            cardContent.appendChild(headerDiv);
+        }
+
         // Compose the picture-entity card using cardHelpers (async, recommended)
         const cardConfig = {
             type: "picture-entity",
@@ -268,13 +377,12 @@ class SunseekerMowerControlCard extends HTMLElement {
             }
         }
         pictureCard.hass = this._hass;
-
-        // Add the picture card to the card-content
-        const cardContent = this.shadowRoot.getElementById("card-content");
-        cardContent.innerHTML = ""; // Clear
         cardContent.appendChild(pictureCard);
 
         // Add mower controls below the picture card
+        const stateLabel = _t("state", this._hass);
+        const stateValue = _stateValue(this._mowerState, this._hass);
+
         const mowerBlock = document.createElement("div");
         mowerBlock.className = "mower-block";
         mowerBlock.innerHTML = `
@@ -285,7 +393,7 @@ class SunseekerMowerControlCard extends HTMLElement {
                 <button class="action-btn" id="home-btn">${_t("home", this._hass)}</button>
             </div>
             <div class="state-row" id="state-row">
-                ${_t("state", this._hass)}: ${this._mowerState}
+                ${stateLabel}: ${stateValue}
             </div>
             <div class="zone-buttons" id="zone-buttons">
                 ${this._zones
@@ -332,7 +440,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         // Only update state row and zone buttons
         const stateRow = this.shadowRoot.getElementById("state-row");
         if (stateRow) {
-            stateRow.textContent = `${_t("state", this._hass)}: ${this._mowerState}`;
+            stateRow.textContent = `${_t("state", this._hass)}: ${_stateValue(this._mowerState, this._hass)}`;
         }
         this._updateZoneButtons();
     }
@@ -368,6 +476,10 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
 
     async render() {
         if (!this._hass) return;
+        if (!customElements.get("ha-entity-picker")) {
+          await customElements.get("hui-entities-card").getConfigElement();
+        }
+
 
         // Dynamically import ha-entity-picker if not loaded
         if (!customElements.get("ha-entity-picker")) {
@@ -410,8 +522,6 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerMower.hass = this._hass;
         pickerMower.value = this._entity;
         pickerMower.setAttribute("data-config-value", "entity");
-        pickerMower.includeDomains = ["vacuum", "lawn_mower", "mower"];
-        //pickerMower.setAttribute("domain-filter", "mower,vacuum,lawn_mower");
         pickerMower.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, entity: ev.detail.value };
             this._fireConfigChanged();
@@ -423,8 +533,6 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerZone.hass = this._hass;
         pickerZone.value = this._zoneEntity;
         pickerZone.setAttribute("data-config-value", "zone_entity");
-        pickerMower.includeDomains = ["select"];
-        //pickerZone.setAttribute("domain-filter", "select");
         pickerZone.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, zone_entity: ev.detail.value };
             this._fireConfigChanged();
@@ -436,8 +544,6 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerCamera.hass = this._hass;
         pickerCamera.value = this._cameraEntity;
         pickerCamera.setAttribute("data-config-value", "camera_entity");
-        pickerCamera.setAttribute("domain-filter", "camera,image");
-        pickerMower.includeDomains = ["camera", "image"];
         pickerCamera.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, camera_entity: ev.detail.value };
             this._fireConfigChanged();
@@ -470,8 +576,8 @@ customElements.define("sunseeker-mower-control-card", SunseekerMowerControlCard)
 customElements.define("sunseeker-mower-control-card-editor", SunseekerMowerControlCardEditor);
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "sunseeker-mower-control-card",
-  name: "Sunseeker Mower Control Card",
-  preview: false,
-  description: "Custom card to allow cutting special zones",
+    type: "sunseeker-mower-control-card",
+    name: "Sunseeker Mower Control Card",
+    preview: false,
+    description: "Custom card to allow cutting special zones",
 });
