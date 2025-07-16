@@ -16,3 +16,4 @@ type: 'custom:sunseeker-schedule-card'
 # or
 type: 'custom:sunseeker-mower-control-card'
 ```
+<img width="897" height="585" alt="image" src="https://github.com/user-attachments/assets/ba882b10-c8d4-4090-9dc3-eff5568ecd1b" />
