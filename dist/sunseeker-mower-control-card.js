@@ -451,11 +451,15 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     setConfig(config) {
         this._config = config;
         this.render();
+        this._initialized = true;
     }
 
     set hass(hass) {
         this._hass = hass;
-        this.render();
+        if (this._initialized) {
+            this._updateDom(); // Only update DOM, not full render
+        }
+        //this.render();
     }
 
     get _entity() {
@@ -522,6 +526,9 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerMower.hass = this._hass;
         pickerMower.value = this._entity;
         pickerMower.setAttribute("data-config-value", "entity");
+        pickerMower.setAttribute("domain-filter", "lawn_mower");
+        pickerMower.setAttribute("include-domains", "lawn_mower");
+        pickerMower.includeDomains = ["lawn_mower"];
         pickerMower.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, entity: ev.detail.value };
             this._fireConfigChanged();
@@ -533,6 +540,9 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerZone.hass = this._hass;
         pickerZone.value = this._zoneEntity;
         pickerZone.setAttribute("data-config-value", "zone_entity");
+        pickerZone.setAttribute("domain-filter", "select");
+        pickerZone.setAttribute("include-domains", "select");
+        pickerZone.includeDomains = ["select"];
         pickerZone.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, zone_entity: ev.detail.value };
             this._fireConfigChanged();
@@ -544,6 +554,9 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         pickerCamera.hass = this._hass;
         pickerCamera.value = this._cameraEntity;
         pickerCamera.setAttribute("data-config-value", "camera_entity");
+        pickerCamera.setAttribute("domain-filter", "camera");
+        pickerCamera.setAttribute("include-domains", "camera");
+        pickerCamera.includeDomains = ["camera"];
         pickerCamera.addEventListener("value-changed", (ev) => {
             this._config = { ...this._config, camera_entity: ev.detail.value };
             this._fireConfigChanged();
