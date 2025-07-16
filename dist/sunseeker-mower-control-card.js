@@ -268,44 +268,63 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (!this.shadowRoot) return;
         this.shadowRoot.innerHTML = `
             <style>
+                :host {
+                    --ha-card-bg: var(--card-background-color);
+                    --ha-card-border: var(--divider-color);
+                    --ha-card-header: var(--primary-color);
+                    --ha-card-text: var(--primary-text-color);
+                    --ha-card-subtle: var(--secondary-background-color, #222);
+                    --ha-card-accent: var(--primary-color);
+                }
+                .card-container {
+                    border: 2px solid var(--ha-card-border);
+                    border-radius: 12px;
+                    background: var(--ha-card-bg);
+                    box-shadow: 0 2px 6px rgba(25, 118, 210, 0.08);
+                    max-width: 420px;
+                    margin: 0 auto;
+                    padding: 18px 12px 12px 12px;
+                }
                 .header {
                     font-size: 1.3em;
                     font-weight: bold;
                     margin-bottom: 12px;
                     text-align: center;
+                    color: var(--ha-card-text);
                 }
                 .mower-block {
                     text-align: center;
                     margin-bottom: 18px;
-                    border: 2px solid #fff;
+                    border: none;
                     border-radius: 12px;
                     padding: 12px 8px 8px 8px;
-                    background: transparent;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+                    background: var(--ha-card-bg);
+                    box-shadow: none;
                     max-width: 400px;
                     margin-left: auto;
                     margin-right: auto;
                 }
                 .zone-buttons {
-                    margin-bottom: 16px;
+                    margin-bottom: 8px;
                     display: flex;
                     flex-wrap: wrap;
                     justify-content: center;
                     gap: 8px;
+                    margin-top: 24px;
                 }
                 .zone-btn {
                     padding: 4px 16px;
                     border-radius: 12px;
-                    border: 1px solid #888;
-                    background: #eee;
-                    color: #000;
+                    border: 1px solid var(--ha-card-border);
+                    background: var(--ha-card-subtle);
+                    color: var(--ha-card-text);
                     cursor: pointer;
                     transition: background 0.2s, color 0.2s;
                 }
                 .zone-btn.selected {
-                    background: #1976d2;
-                    color: #fff;
-                    border-color: #1976d2;
+                    background: var(--ha-card-accent);
+                    color: var(--ha-card-bg);
+                    border-color: var(--ha-card-accent);
                 }
                 .zone-btn:disabled {
                     opacity: 0.5;
@@ -320,26 +339,27 @@ class SunseekerMowerControlCard extends HTMLElement {
                 .action-btn {
                     padding: 6px 18px;
                     border-radius: 12px;
-                    border: 1px solid #888;
-                    background: #eee;
-                    color: #000;
+                    border: 1px solid var(--ha-card-border);
+                    background: var(--ha-card-subtle);
+                    color: var(--ha-card-text);
                     cursor: pointer;
                     transition: background 0.2s, color 0.2s;
                     font-size: 1em;
                 }
                 .action-btn:active {
-                    background: #1976d2;
-                    color: #fff;
-                    border-color: #1976d2;
+                    background: var(--ha-card-accent);
+                    color: var(--ha-card-bg);
+                    border-color: var(--ha-card-accent);
                 }
                 .state-row {
                     margin-top: 10px;
+                    margin-bottom: 18px;
                     font-weight: bold;
+                    color: var(--ha-card-text);
                 }
             </style>
-            <div id="card-content"></div>
+            <div class="card-container" id="card-content"></div>
         `;
-
         const cardContent = this.shadowRoot.getElementById("card-content");
         cardContent.innerHTML = "";
 
@@ -351,33 +371,34 @@ class SunseekerMowerControlCard extends HTMLElement {
             cardContent.appendChild(headerDiv);
         }
 
-        // Compose the picture-entity card using cardHelpers (async, recommended)
-        const cardConfig = {
-            type: "picture-entity",
-            entity: this._cameraEntity,
-            show_name: false,
-            show_state: false,
-            camera_view: "live",
-        };
+        // Only add picture-entity card if camera entity is set and not empty
+        let pictureCard = null;
+        if (this._cameraEntity && typeof this._cameraEntity === "string" && this._cameraEntity.trim() !== "") {
+            const cardConfig = {
+                type: "picture-entity",
+                entity: this._cameraEntity,
+                show_name: false,
+                show_state: false,
+                camera_view: "live",
+            };
 
-        // Ensure cardHelpers are loaded
-        if (!window.cardHelpers) {
-            window.cardHelpers = await window.loadCardHelpers();
-        }
-
-        let pictureCard;
-        if (window.cardHelpers && window.cardHelpers.createCardElement) {
-            pictureCard = await window.cardHelpers.createCardElement(cardConfig);
-        } else if (window.createCardElement) {
-            pictureCard = window.createCardElement(cardConfig);
-        } else {
-            pictureCard = document.createElement("hui-picture-entity-card");
-            if (pictureCard.setConfig) {
-                pictureCard.setConfig(cardConfig);
+            if (!window.cardHelpers) {
+                window.cardHelpers = await window.loadCardHelpers();
             }
+
+            if (window.cardHelpers && window.cardHelpers.createCardElement) {
+                pictureCard = await window.cardHelpers.createCardElement(cardConfig);
+            } else if (window.createCardElement) {
+                pictureCard = window.createCardElement(cardConfig);
+            } else {
+                pictureCard = document.createElement("hui-picture-entity-card");
+                if (pictureCard.setConfig) {
+                    pictureCard.setConfig(cardConfig);
+                }
+            }
+            pictureCard.hass = this._hass;
+            cardContent.appendChild(pictureCard);
         }
-        pictureCard.hass = this._hass;
-        cardContent.appendChild(pictureCard);
 
         // Add mower controls below the picture card
         const stateLabel = _t("state", this._hass);
@@ -420,7 +441,6 @@ class SunseekerMowerControlCard extends HTMLElement {
         // Attach event handlers for zone buttons
         this._updateZoneButtons();
     }
-
     _updateZoneButtons() {
         // Update zone button selection and handlers
         if (!this.shadowRoot) return;
