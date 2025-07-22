@@ -281,7 +281,6 @@ class SunseekerMowerControlCard extends HTMLElement {
                     border-radius: 12px;
                     background: var(--ha-card-bg);
                     box-shadow: 0 2px 6px rgba(25, 118, 210, 0.08);
-                    max-width: 420px;
                     margin: 0 auto;
                     padding: 18px 12px 12px 12px;
                 }
@@ -300,7 +299,6 @@ class SunseekerMowerControlCard extends HTMLElement {
                     padding: 12px 8px 8px 8px;
                     background: var(--ha-card-bg);
                     box-shadow: none;
-                    max-width: 400px;
                     margin-left: auto;
                     margin-right: auto;
                 }
