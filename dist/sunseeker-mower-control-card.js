@@ -536,6 +536,9 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                     />
                     ${_t("show_header", this._hass)}
                 </label>
+                <br />
+                <br />
+                Version 1.0.5
             </div>
         `;
 
