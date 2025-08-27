@@ -249,19 +249,21 @@ class SunseekerMowerControlCard extends HTMLElement {
                     zones: this._selectedZones
                 });
                 return;
+            case "stop":
+                this._hass.callService("sunseeker", "stop_mowing", {
+                    entity_id: this._entity,
+                });
+                return;
             case "pause":
                 service = "pause";
                 break;
-            case "stop":
-                service = "stop";
-                break;
             case "home":
-                service = "return_to_base";
+                service = "dock";
                 break;
             default:
                 return;
         }
-        this._hass.callService("mower", service, data);
+        this._hass.callService("lawn_mower", service, data);
     }
 
     async _render() {
@@ -538,7 +540,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 </label>
                 <br />
                 <br />
-                Version 1.0.5
+                Version 1.0.7
             </div>
         `;
 
