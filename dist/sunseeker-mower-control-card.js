@@ -11,6 +11,8 @@ const TRANSLATIONS = {
         camera_entity: "Camera/Image entity",
         header_label: "Header",
         show_header: "Show header",
+        show_icons: "Show icons",
+        show_text: "Show button text",
     },
     da: {
         header: "Plæneklipper kontrol",
@@ -24,6 +26,8 @@ const TRANSLATIONS = {
         camera_entity: "Kamera/Billede enhed",
         header_label: "Overskrift",
         show_header: "Vis overskrift",
+        show_icons: "Vis ikoner",
+        show_text: "Vis tekst på knapper",
     },
     de: {
         header: "Mähersteuerung",
@@ -37,6 +41,8 @@ const TRANSLATIONS = {
         camera_entity: "Kamera/Bild Entität",
         header_label: "Überschrift",
         show_header: "Überschrift anzeigen",
+        show_icons: "Icons anzeigen",
+        show_text: "Show button text",
     },
     fr: {
         header: "Contrôle de la tondeuse",
@@ -50,6 +56,8 @@ const TRANSLATIONS = {
         camera_entity: "Entité Caméra/Image",
         header_label: "En-tête",
         show_header: "Afficher l'en-tête",
+        show_icons: "Show icons",
+        show_text: "Show button text",
     },
     state_values: {
         Standby: {
@@ -191,6 +199,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._cameraEntity = config.camera_entity;
         this._header = config.header || TRANSLATIONS["en"].header;
         this._showHeader = config.show_header !== false;
+        this._showIcons = config.show_icons !== false;
+        this._showText = config.show_text !== false;
         this._render();
         this._initialized = true;
     }
@@ -408,11 +418,25 @@ class SunseekerMowerControlCard extends HTMLElement {
         mowerBlock.className = "mower-block";
         mowerBlock.innerHTML = `
             <div class="action-buttons">
-                <button class="action-btn" id="start-btn">${_t("start", this._hass)}</button>
-                <button class="action-btn" id="pause-btn">${_t("pause", this._hass)}</button>
-                <button class="action-btn" id="stop-btn">${_t("stop", this._hass)}</button>
-                <button class="action-btn" id="home-btn">${_t("home", this._hass)}</button>
+                <button class="action-btn" id="start-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:play"></ha-icon>' : ''}
+                    ${this._showText ? _t("start", this._hass) : ''}
+                </button>
+                <button class="action-btn" id="pause-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:pause"></ha-icon>' : ''}
+                    ${this._showText ? _t("pause", this._hass) : ''}
+                </button>
+                <button class="action-btn" id="stop-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:stop"></ha-icon>' : ''}
+                    ${this._showText ? _t("stop", this._hass) : ''}
+                </button>
+                <button class="action-btn" id="home-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:home-import-outline"></ha-icon>' : ''}
+                    ${this._showText ? _t("home", this._hass) : ''}
+                </button>
             </div>
+
+
             <div class="state-row" id="state-row">
                 ${stateLabel}: ${stateValue}
             </div>
@@ -497,6 +521,12 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     get _showHeader() {
         return this._config?.show_header !== false;
     }
+    get _showIcons() {
+        return this._config?.show_icons !== false;
+    }
+    get _showText() {
+        return this._config?.show_text !== false;
+    }
 
     async render() {
         if (!this._hass) return;
@@ -539,8 +569,27 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                     ${_t("show_header", this._hass)}
                 </label>
                 <br />
+                <label>
+                    <input
+                        type="checkbox"
+                        id="show_icons"
+                        ${this._showIcons ? "checked" : ""}
+                    />
+                    ${_t("show_icons", this._hass)}
+                </label>
                 <br />
-                Version 1.0.7
+                <label>
+                    <input
+                        type="checkbox"
+                        id="show_text"
+                        ${this._showText ? "checked" : ""}
+                    />
+                    ${_t("show_text", this._hass)}
+                </label>
+                <br />
+
+                <br />
+                Version 1.0.8
             </div>
         `;
 
@@ -593,6 +642,14 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         };
         this.querySelector("#show_header").onchange = (ev) => {
             this._config = { ...this._config, show_header: ev.target.checked };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#show_icons").onchange = (ev) => {
+            this._config = { ...this._config, show_icons: ev.target.checked };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#show_text").onchange = (ev) => {
+            this._config = { ...this._config, show_text: ev.target.checked };
             this._fireConfigChanged();
         };
     }
