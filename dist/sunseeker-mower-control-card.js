@@ -60,85 +60,113 @@ const TRANSLATIONS = {
         show_text: "Show button text",
     },
     state_values: {
-        Standby: {
+        standby: {
+            en: "Standby",
             da: "Standby",
             de: "Bereitschaft",
             fr: "Veille"
         },
-        Mowing: {
+        mowing: {
+            en: "Mowing",
             da: "Slår græs",
             de: "Mähen",
             fr: "Tonte"
         },
-        "On the way home": {
+        on_the_way_home: {
+            en: "Going back to dock",
             da: "På vej hjem",
             de: "Auf dem Heimweg",
             fr: "Retour à la base"
         },
-        "Mowing border": {
+        mowing_border: {
+            en: "Mowing border",
             da: "Kanter græs",
             de: "Rand mähen",
             fr: "Tonte des bordures"
         },
-        Idle: {
+        idle: {
+            en: "Idle",
             da: "Inaktiv",
             de: "Leerlauf",
             fr: "Inactif"
         },
-        Working: {
+        working: {
+            en: "Working",
             da: "Arbejder",
             de: "Arbeitet",
             fr: "Travail"
         },
-        Pause: {
+        pause: {
+            en: "Paused",
             da: "Pause",
             de: "Pause",
             fr: "Pause"
         },
-        Error: {
+        error: {
+            en: "error",
             da: "Fejl",
             de: "Fehler",
             fr: "Erreur"
         },
-        Return: {
+        return: {
+            en: "Returning",
             da: "Returnerer",
             de: "Zurückkehren",
             fr: "Retour"
         },
-        "Return pause": {
+        return_pause: {
+            en: "Return paused",
             da: "Return pause",
             de: "Rückkehr Pause",
             fr: "Pause retour"
         },
-        Charging: {
+        charging: {
+            en: "Charging",
             da: "Lader op",
             de: "Lädt",
             fr: "En charge"
         },
-        "Charging full": {
+        charging_full: {
+            en: "Charged",
             da: "Fuld opladning",
             de: "Voll geladen",
             fr: "Charge complète"
         },
-        Offline: {
+        offline: {
+            en: "Offline",
             da: "Offline",
             de: "Offline",
             fr: "Hors ligne"
         },
-        Locating: {
+        locating: {
+            en: "Locating",
             da: "Finder position",
             de: "Position wird gesucht",
             fr: "Localisation"
         },
-        Stop: {
+        stop: {
+            en: "Stopped",
             da: "Stoppet",
             de: "Gestoppt",
             fr: "Arrêté"
         },
-        "Continue mowing": {
+        continue_mowing: {
+            en: "Continue mowing",
             da: "Fortsæt slåning",
             de: "Weiter mähen",
             fr: "Continuer la tonte"
+        },
+        stuck: {
+            en: "Stuck",
+            da: "Sidder fast",
+            de: "Festgefahren",
+            fr: "Bloqué"
+        },
+        updating_firmware: {
+            en: "Opdating firmware",
+            da: "Opdatere firmware",
+            de: "Opdating firmware",
+            fr: "Opdating firmware"
         }
     }
 };
@@ -589,7 +617,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <br />
 
                 <br />
-                Version 1.0.8
+                Version 1.0.9
             </div>
         `;
 
