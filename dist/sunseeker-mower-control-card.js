@@ -5,6 +5,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stop",
         home: "Home",
+        end_task: "End task",
         state: "State",
         mower_entity: "Mower entity",
         zone_entity: "Zone select entity",
@@ -20,6 +21,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stop",
         home: "Hjem",
+        end_task: "Afslut opgave",
         state: "Status",
         mower_entity: "Plæneklipper enhed",
         zone_entity: "Zonevælger enhed",
@@ -35,6 +37,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stopp",
         home: "Heim",
+        end_task: "Aufgabe beenden",
         state: "Status",
         mower_entity: "Mäher Entität",
         zone_entity: "Zonenauswahl Entität",
@@ -50,6 +53,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Arrêter",
         home: "Accueil",
+        end_task: "Terminer la tâche",
         state: "État",
         mower_entity: "Entité de la tondeuse",
         zone_entity: "Entité de sélection de zone",
@@ -292,6 +296,11 @@ class SunseekerMowerControlCard extends HTMLElement {
                     entity_id: this._entity,
                 });
                 return;
+            case "end_task":
+                this._hass.callService("sunseeker", "stop_task", {
+                    entity_id: this._entity,
+                });
+                return;
             case "pause":
                 service = "pause";
                 break;
@@ -369,20 +378,26 @@ class SunseekerMowerControlCard extends HTMLElement {
                     cursor: not-allowed;
                 }
                 .action-buttons {
-                    display: flex;
-                    justify-content: center;
-                    gap: 12px;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+                    gap: 8px;
                     margin-top: 16px;
+                    width: 100%;
                 }
                 .action-btn {
-                    padding: 6px 18px;
+                    width: 100%;
+                    padding: 8px 10px;
                     border-radius: 12px;
                     border: 1px solid var(--ha-card-border);
                     background: var(--ha-card-subtle);
                     color: var(--ha-card-text);
                     cursor: pointer;
                     transition: background 0.2s, color 0.2s;
-                    font-size: 1em;
+                    font-size: 0.95em;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
                 }
                 .action-btn:active {
                     background: var(--ha-card-accent);
@@ -462,6 +477,10 @@ class SunseekerMowerControlCard extends HTMLElement {
                     ${this._showIcons ? '<ha-icon icon="mdi:home-import-outline"></ha-icon>' : ''}
                     ${this._showText ? _t("home", this._hass) : ''}
                 </button>
+                <button class="action-btn" id="end-task-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:flag-checkered"></ha-icon>' : ''}
+                    ${this._showText ? _t("end_task", this._hass) : ''}
+                </button>
             </div>
 
 
@@ -489,6 +508,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         mowerBlock.querySelector("#pause-btn").onclick = () => this._callMowerService("pause");
         mowerBlock.querySelector("#stop-btn").onclick = () => this._callMowerService("stop");
         mowerBlock.querySelector("#home-btn").onclick = () => this._callMowerService("home");
+        mowerBlock.querySelector("#end-task-btn").onclick = () => this._callMowerService("end_task");
 
         // Attach event handlers for zone buttons
         this._updateZoneButtons();
@@ -617,7 +637,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <br />
 
                 <br />
-                Version 1.0.9
+                Version 1.0.10
             </div>
         `;
 
