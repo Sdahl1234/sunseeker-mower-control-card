@@ -6,6 +6,13 @@ const TRANSLATIONS = {
         stop: "Stop",
         home: "Home",
         end_task: "End task",
+        enable_drawing: "Enable drawing",
+        disable_drawing: "Disable drawing",
+        clear_area: "Clear area",
+        mow_area: "Mow area",
+        area_points: "Area points",
+        area_draw_hint: "Tap map to draw mowing area",
+        area_missing_map: "No map data available for drawing",
         state: "State",
         mower_entity: "Mower entity",
         zone_entity: "Zone select entity",
@@ -22,6 +29,13 @@ const TRANSLATIONS = {
         stop: "Stop",
         home: "Hjem",
         end_task: "Afslut opgave",
+        enable_drawing: "Aktivér tegning",
+        disable_drawing: "Deaktivér tegning",
+        clear_area: "Ryd område",
+        mow_area: "Klip område",
+        area_points: "Områdepunkter",
+        area_draw_hint: "Tryk på kortet for at tegne klippeområde",
+        area_missing_map: "Ingen kortdata tilgængelig for tegning",
         state: "Status",
         mower_entity: "Plæneklipper enhed",
         zone_entity: "Zonevælger enhed",
@@ -38,6 +52,13 @@ const TRANSLATIONS = {
         stop: "Stopp",
         home: "Heim",
         end_task: "Aufgabe beenden",
+        enable_drawing: "Zeichnen aktivieren",
+        disable_drawing: "Zeichnen deaktivieren",
+        clear_area: "Bereich löschen",
+        mow_area: "Bereich mähen",
+        area_points: "Bereichspunkte",
+        area_draw_hint: "Auf die Karte tippen, um den Mähbereich zu zeichnen",
+        area_missing_map: "Keine Kartendaten zum Zeichnen verfügbar",
         state: "Status",
         mower_entity: "Mäher Entität",
         zone_entity: "Zonenauswahl Entität",
@@ -54,6 +75,13 @@ const TRANSLATIONS = {
         stop: "Arrêter",
         home: "Accueil",
         end_task: "Terminer la tâche",
+        enable_drawing: "Activer le dessin",
+        disable_drawing: "Désactiver le dessin",
+        clear_area: "Effacer la zone",
+        mow_area: "Tondre la zone",
+        area_points: "Points de zone",
+        area_draw_hint: "Touchez la carte pour dessiner la zone de tonte",
+        area_missing_map: "Aucune donnée de carte disponible pour le dessin",
         state: "État",
         mower_entity: "Entité de la tondeuse",
         zone_entity: "Entité de sélection de zone",
@@ -203,6 +231,9 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._zones = [];
         this._selectedZones = [];
         this._mowerState = "unknown";
+        this._drawPoints = [];
+        this._drawEnabled = false;
+        this._overlayResizeObserver = null;
         this._initialized = false;
     }
 
@@ -280,6 +311,255 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._updateZoneButtons();
     }
 
+    _parseMapPoints(rawPoints) {
+        if (!rawPoints) {
+            return [];
+        }
+        if (typeof rawPoints === "string") {
+            try {
+                return JSON.parse(rawPoints);
+            } catch (_err) {
+                return [];
+            }
+        }
+        if (Array.isArray(rawPoints)) {
+            return rawPoints;
+        }
+        return [];
+    }
+
+    _extractHintTokens(value) {
+        if (!value || typeof value !== "string") {
+            return [];
+        }
+        return value
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((token) => token.length >= 4);
+    }
+
+    _findMapDataState() {
+        if (!this._hass) {
+            return null;
+        }
+
+        const directState = this._cameraEntity ? this._hass.states[this._cameraEntity] : null;
+        if (directState?.attributes?.map_data) {
+            return directState;
+        }
+
+        const allStates = this._hass.states || {};
+        const candidates = Object.entries(allStates)
+            .filter(([entityId, stateObj]) => entityId.startsWith("image.") && !!stateObj?.attributes?.map_data)
+            .map(([entityId, stateObj]) => ({ entityId, stateObj }));
+
+        if (!candidates.length) {
+            return null;
+        }
+
+        const hintTokens = [
+            ...this._extractHintTokens(this._cameraEntity),
+            ...this._extractHintTokens(this._entity),
+            ...this._extractHintTokens(this._zoneEntity),
+        ];
+
+        let bestCandidate = null;
+        let bestScore = -1;
+
+        candidates.forEach((candidate) => {
+            const entityIdLower = candidate.entityId.toLowerCase();
+            let score = 0;
+
+            // Prefer the primary map image when multiple map_data images exist.
+            if (entityIdLower.includes("mower_map") || entityIdLower.includes("_map")) {
+                score += 2;
+            }
+
+            hintTokens.forEach((token) => {
+                if (entityIdLower.includes(token)) {
+                    score += 3;
+                }
+            });
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+            }
+        });
+
+        return bestCandidate?.stateObj || candidates[0].stateObj;
+    }
+
+    _getMapBounds() {
+        if (!this._hass) {
+            return null;
+        }
+        const stateObj = this._findMapDataState();
+        const mapData = stateObj?.attributes?.map_data;
+        if (!mapData) {
+            return null;
+        }
+
+        const mapKeys = [
+            "divide_area_work",
+            "region_work",
+            "region_channel",
+            "region_obstacle",
+            "region_forbidden",
+            "region_placed_blank",
+            "region_charger_channel",
+        ];
+
+        let minX = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+
+        mapKeys.forEach((key) => {
+            (mapData[key] || []).forEach((entry) => {
+                const points = this._parseMapPoints(entry?.points);
+                points.forEach((point) => {
+                    const x = Number(point?.[0]);
+                    const y = Number(point?.[1]);
+                    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                        return;
+                    }
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                });
+            });
+        });
+
+        if (!Number.isFinite(minX) || !Number.isFinite(maxX) || !Number.isFinite(minY) || !Number.isFinite(maxY)) {
+            return null;
+        }
+        if (maxX - minX === 0 || maxY - minY === 0) {
+            return null;
+        }
+
+        return { minX, maxX, minY, maxY };
+    }
+
+    _toMapCoordinates(pixelX, pixelY, width, height, bounds) {
+        const xNorm = Math.min(1, Math.max(0, pixelX / width));
+        const yNorm = Math.min(1, Math.max(0, pixelY / height));
+        const mapX = bounds.minX + xNorm * (bounds.maxX - bounds.minX);
+        const mapY = bounds.minY + (1 - yNorm) * (bounds.maxY - bounds.minY);
+        return [
+            Number(mapX.toFixed(3)),
+            Number(mapY.toFixed(3)),
+        ];
+    }
+
+    _toPixelCoordinates(mapPoint, width, height, bounds) {
+        const xNorm = (mapPoint[0] - bounds.minX) / (bounds.maxX - bounds.minX);
+        const yNorm = (mapPoint[1] - bounds.minY) / (bounds.maxY - bounds.minY);
+        const px = Math.min(width, Math.max(0, xNorm * width));
+        const py = Math.min(height, Math.max(0, (1 - yNorm) * height));
+        return [px, py];
+    }
+
+    _onDrawOverlayClick(event) {
+        const overlay = this.shadowRoot?.getElementById("draw-overlay");
+        const bounds = this._getMapBounds();
+        if (!this._drawEnabled || !overlay || !bounds) {
+            return;
+        }
+        const rect = overlay.getBoundingClientRect();
+        const pixelX = event.clientX - rect.left;
+        const pixelY = event.clientY - rect.top;
+        const mapPoint = this._toMapCoordinates(pixelX, pixelY, rect.width, rect.height, bounds);
+        this._drawPoints.push(mapPoint);
+        this._renderDrawOverlay();
+        this._updateDrawControls();
+    }
+
+    _renderDrawOverlay() {
+        const overlay = this.shadowRoot?.getElementById("draw-overlay");
+        const bounds = this._getMapBounds();
+        if (!overlay) {
+            return;
+        }
+
+        overlay.classList.toggle("is-enabled", this._drawEnabled && !!bounds);
+
+        const width = overlay.clientWidth;
+        const height = overlay.clientHeight;
+        if (!width || !height) {
+            return;
+        }
+
+        if (!bounds || !this._drawEnabled) {
+            overlay.innerHTML = "";
+            return;
+        }
+
+        const pixelPoints = this._drawPoints.map((point) => this._toPixelCoordinates(point, width, height, bounds));
+        const polylinePoints = pixelPoints.map((p) => `${p[0]},${p[1]}`).join(" ");
+        const polygonPoints = this._drawPoints.length >= 3 ? polylinePoints : "";
+
+        overlay.innerHTML = `
+            ${polygonPoints ? `<polygon points="${polygonPoints}" fill="rgba(255, 87, 34, 0.25)" stroke="rgba(255, 87, 34, 0.95)" stroke-width="2"></polygon>` : ""}
+            ${polylinePoints ? `<polyline points="${polylinePoints}" fill="none" stroke="rgba(255, 87, 34, 0.95)" stroke-width="2"></polyline>` : ""}
+            ${pixelPoints.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="rgba(255, 87, 34, 1)"></circle>`).join("")}
+        `;
+    }
+
+    _updateDrawControls() {
+        const sendBtn = this.shadowRoot?.getElementById("send-area-btn");
+        const clearBtn = this.shadowRoot?.getElementById("clear-area-btn");
+        const pointsCounter = this.shadowRoot?.getElementById("area-points-counter");
+        const mapHint = this.shadowRoot?.getElementById("map-draw-hint");
+        const toggleBtn = this.shadowRoot?.getElementById("toggle-draw-btn");
+        const drawControls = this.shadowRoot?.getElementById("draw-controls");
+        const hasMap = !!this._getMapBounds();
+        const showDrawControls = hasMap && this._drawEnabled;
+
+        if (sendBtn) {
+            sendBtn.disabled = !hasMap || this._drawPoints.length < 3;
+        }
+        if (clearBtn) {
+            clearBtn.disabled = this._drawPoints.length === 0;
+        }
+        if (drawControls) {
+            drawControls.hidden = !showDrawControls;
+            drawControls.classList.toggle("is-hidden", !showDrawControls);
+        }
+        if (pointsCounter) {
+            pointsCounter.textContent = `${_t("area_points", this._hass)}: ${this._drawPoints.length}`;
+        }
+        if (mapHint) {
+            mapHint.textContent = hasMap
+                ? (this._drawEnabled ? _t("area_draw_hint", this._hass) : _t("enable_drawing", this._hass))
+                : _t("area_missing_map", this._hass);
+        }
+        if (toggleBtn) {
+            toggleBtn.disabled = !hasMap;
+            toggleBtn.classList.toggle("is-active", this._drawEnabled && hasMap);
+            toggleBtn.innerHTML = `
+                ${this._showIcons ? `<ha-icon icon="${this._drawEnabled ? "mdi:pencil-off" : "mdi:pencil"}"></ha-icon>` : ""}
+                ${this._showText ? _t("mow_area", this._hass) : ""}
+            `;
+        }
+    }
+
+    _toggleDrawing() {
+        if (!this._getMapBounds()) {
+            return;
+        }
+        this._drawEnabled = !this._drawEnabled;
+        this._renderDrawOverlay();
+        this._updateDrawControls();
+    }
+
+    _clearDrawPoints() {
+        this._drawPoints = [];
+        this._renderDrawOverlay();
+        this._updateDrawControls();
+    }
+
     _callMowerService(action) {
         if (!this._hass || !this._entity) return;
         let service = "";
@@ -299,6 +579,15 @@ class SunseekerMowerControlCard extends HTMLElement {
             case "end_task":
                 this._hass.callService("sunseeker", "stop_task", {
                     entity_id: this._entity,
+                });
+                return;
+            case "send_area":
+                if (this._drawPoints.length < 3) {
+                    return;
+                }
+                this._hass.callService("sunseeker", "start_mowing_selected_area", {
+                    entity_id: this._entity,
+                    points: this._drawPoints,
                 });
                 return;
             case "pause":
@@ -404,6 +693,50 @@ class SunseekerMowerControlCard extends HTMLElement {
                     color: var(--ha-card-bg);
                     border-color: var(--ha-card-accent);
                 }
+                .map-wrapper {
+                    position: relative;
+                    border-radius: 12px;
+                    overflow: hidden;
+                }
+                .map-overlay {
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 2;
+                    cursor: default;
+                    touch-action: none;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s ease;
+                }
+                .map-overlay.is-enabled {
+                    cursor: crosshair;
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+                .draw-controls {
+                    margin-top: 10px;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 8px;
+                    align-items: center;
+                }
+                .draw-controls.is-hidden,
+                .draw-controls[hidden] {
+                    display: none !important;
+                }
+                .draw-info {
+                    text-align: left;
+                    font-size: 0.85em;
+                    color: var(--ha-card-text);
+                    opacity: 0.9;
+                }
+                .action-btn.is-active {
+                    background: var(--ha-card-accent);
+                    color: var(--ha-card-bg);
+                    border-color: var(--ha-card-accent);
+                }
                 .state-row {
                     margin-top: 10px;
                     margin-bottom: 18px;
@@ -450,7 +783,24 @@ class SunseekerMowerControlCard extends HTMLElement {
                 }
             }
             pictureCard.hass = this._hass;
-            cardContent.appendChild(pictureCard);
+
+            const mapWrapper = document.createElement("div");
+            mapWrapper.className = "map-wrapper";
+            mapWrapper.appendChild(pictureCard);
+
+            const mapOverlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            mapOverlay.setAttribute("id", "draw-overlay");
+            mapOverlay.setAttribute("class", "map-overlay");
+            mapOverlay.addEventListener("click", (event) => this._onDrawOverlayClick(event));
+            mapWrapper.appendChild(mapOverlay);
+
+            cardContent.appendChild(mapWrapper);
+
+            if (this._overlayResizeObserver) {
+                this._overlayResizeObserver.disconnect();
+            }
+            this._overlayResizeObserver = new ResizeObserver(() => this._renderDrawOverlay());
+            this._overlayResizeObserver.observe(mapWrapper);
         }
 
         // Add mower controls below the picture card
@@ -481,11 +831,26 @@ class SunseekerMowerControlCard extends HTMLElement {
                     ${this._showIcons ? '<ha-icon icon="mdi:flag-checkered"></ha-icon>' : ''}
                     ${this._showText ? _t("end_task", this._hass) : ''}
                 </button>
+                <button class="action-btn" id="toggle-draw-btn"></button>
             </div>
 
 
             <div class="state-row" id="state-row">
                 ${stateLabel}: ${stateValue}
+            </div>
+            <div class="draw-controls" id="draw-controls">
+                <button class="action-btn" id="clear-area-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:eraser"></ha-icon>' : ''}
+                    ${this._showText ? _t("clear_area", this._hass) : ''}
+                </button>
+                <button class="action-btn" id="send-area-btn">
+                    ${this._showIcons ? '<ha-icon icon="mdi:send"></ha-icon>' : ''}
+                    ${this._showText ? _t("mow_area", this._hass) : ''}
+                </button>
+                <div class="draw-info">
+                    <div id="area-points-counter"></div>
+                    <div id="map-draw-hint"></div>
+                </div>
             </div>
             <div class="zone-buttons" id="zone-buttons">
                 ${this._zones
@@ -509,6 +874,12 @@ class SunseekerMowerControlCard extends HTMLElement {
         mowerBlock.querySelector("#stop-btn").onclick = () => this._callMowerService("stop");
         mowerBlock.querySelector("#home-btn").onclick = () => this._callMowerService("home");
         mowerBlock.querySelector("#end-task-btn").onclick = () => this._callMowerService("end_task");
+        mowerBlock.querySelector("#toggle-draw-btn").onclick = () => this._toggleDrawing();
+        mowerBlock.querySelector("#send-area-btn").onclick = () => this._callMowerService("send_area");
+        mowerBlock.querySelector("#clear-area-btn").onclick = () => this._clearDrawPoints();
+
+        this._updateDrawControls();
+        requestAnimationFrame(() => this._renderDrawOverlay());
 
         // Attach event handlers for zone buttons
         this._updateZoneButtons();
@@ -534,6 +905,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (stateRow) {
             stateRow.textContent = `${_t("state", this._hass)}: ${_stateValue(this._mowerState, this._hass)}`;
         }
+        this._updateDrawControls();
+        this._renderDrawOverlay();
         this._updateZoneButtons();
     }
 }
