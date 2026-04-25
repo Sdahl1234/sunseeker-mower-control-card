@@ -232,6 +232,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._selectedZones = [];
         this._mowerState = "unknown";
         this._drawPoints = [];
+        this._drawCursorPoint = null;
         this._drawEnabled = false;
         this._overlayResizeObserver = null;
         this._initialized = false;
@@ -472,8 +473,38 @@ class SunseekerMowerControlCard extends HTMLElement {
         const pixelY = event.clientY - rect.top;
         const mapPoint = this._toMapCoordinates(pixelX, pixelY, rect.width, rect.height, bounds);
         this._drawPoints.push(mapPoint);
+        this._drawCursorPoint = mapPoint;
         this._renderDrawOverlay();
         this._updateDrawControls();
+    }
+
+    _onDrawOverlayPointerMove(event) {
+        const overlay = this.shadowRoot?.getElementById("draw-overlay");
+        const bounds = this._getMapBounds();
+        if (!this._drawEnabled || !overlay || !bounds || this._drawPoints.length === 0) {
+            return;
+        }
+
+        const rect = overlay.getBoundingClientRect();
+        const pixelX = event.clientX - rect.left;
+        const pixelY = event.clientY - rect.top;
+        this._drawCursorPoint = this._toMapCoordinates(
+            pixelX,
+            pixelY,
+            rect.width,
+            rect.height,
+            bounds,
+        );
+        this._renderDrawOverlay();
+    }
+
+    _onDrawOverlayPointerLeave() {
+        if (this._drawCursorPoint === null) {
+            return;
+        }
+
+        this._drawCursorPoint = null;
+        this._renderDrawOverlay();
     }
 
     _renderDrawOverlay() {
@@ -499,10 +530,18 @@ class SunseekerMowerControlCard extends HTMLElement {
         const pixelPoints = this._drawPoints.map((point) => this._toPixelCoordinates(point, width, height, bounds));
         const polylinePoints = pixelPoints.map((p) => `${p[0]},${p[1]}`).join(" ");
         const polygonPoints = this._drawPoints.length >= 3 ? polylinePoints : "";
+        const previewLine = this._drawCursorPoint && this._drawPoints.length
+            ? (() => {
+                const [x1, y1] = pixelPoints[pixelPoints.length - 1];
+                const [x2, y2] = this._toPixelCoordinates(this._drawCursorPoint, width, height, bounds);
+                return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255, 87, 34, 0.7)" stroke-width="2" stroke-dasharray="6 4"></line>`;
+            })()
+            : "";
 
         overlay.innerHTML = `
             ${polygonPoints ? `<polygon points="${polygonPoints}" fill="rgba(255, 87, 34, 0.25)" stroke="rgba(255, 87, 34, 0.95)" stroke-width="2"></polygon>` : ""}
             ${polylinePoints ? `<polyline points="${polylinePoints}" fill="none" stroke="rgba(255, 87, 34, 0.95)" stroke-width="2"></polyline>` : ""}
+            ${previewLine}
             ${pixelPoints.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="rgba(255, 87, 34, 1)"></circle>`).join("")}
         `;
     }
@@ -550,12 +589,16 @@ class SunseekerMowerControlCard extends HTMLElement {
             return;
         }
         this._drawEnabled = !this._drawEnabled;
+        if (!this._drawEnabled) {
+            this._drawCursorPoint = null;
+        }
         this._renderDrawOverlay();
         this._updateDrawControls();
     }
 
     _clearDrawPoints() {
         this._drawPoints = [];
+        this._drawCursorPoint = null;
         this._renderDrawOverlay();
         this._updateDrawControls();
     }
@@ -792,6 +835,8 @@ class SunseekerMowerControlCard extends HTMLElement {
             mapOverlay.setAttribute("id", "draw-overlay");
             mapOverlay.setAttribute("class", "map-overlay");
             mapOverlay.addEventListener("click", (event) => this._onDrawOverlayClick(event));
+            mapOverlay.addEventListener("pointermove", (event) => this._onDrawOverlayPointerMove(event));
+            mapOverlay.addEventListener("pointerleave", () => this._onDrawOverlayPointerLeave());
             mapWrapper.appendChild(mapOverlay);
 
             cardContent.appendChild(mapWrapper);
