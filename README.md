@@ -1,6 +1,6 @@
-# Sunseeker Lovelace Cards
+# Sunseeker mower control card
 
-Custom Lovelace cards for Sunseeker integrations.
+mower control card for Sunseeker integrations.
 
 ## Installation (via HACS)
 
@@ -11,5 +11,5 @@ Custom Lovelace cards for Sunseeker integrations.
 ```yaml
 type: 'custom:sunseeker-mower-control-card'
 ```
-<img width="897" height="600" alt="image" src="https://github.com/user-attachments/assets/dcd6eacb-ca4e-4ec4-b54a-866cdb6694e5" />
+<img width="1006" height="805" alt="image" src="https://github.com/user-attachments/assets/ce5fb40d-d44e-4d3f-9b10-9008bf59b478" />
 
