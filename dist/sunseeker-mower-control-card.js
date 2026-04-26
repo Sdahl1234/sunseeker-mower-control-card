@@ -17,6 +17,9 @@ const TRANSLATIONS = {
         mower_entity: "Mower entity",
         zone_entity: "Zone select entity",
         camera_entity: "Camera/Image entity",
+        model_label: "Model",
+        model_x: "Model X",
+        model_v: "Model V",
         header_label: "Header",
         show_header: "Show header",
         show_icons: "Show icons",
@@ -40,6 +43,9 @@ const TRANSLATIONS = {
         mower_entity: "Plæneklipper enhed",
         zone_entity: "Zonevælger enhed",
         camera_entity: "Kamera/Billede enhed",
+        model_label: "Model",
+        model_x: "Model X",
+        model_v: "Model V",
         header_label: "Overskrift",
         show_header: "Vis overskrift",
         show_icons: "Vis ikoner",
@@ -63,6 +69,9 @@ const TRANSLATIONS = {
         mower_entity: "Mäher Entität",
         zone_entity: "Zonenauswahl Entität",
         camera_entity: "Kamera/Bild Entität",
+        model_label: "Modell",
+        model_x: "Modell X",
+        model_v: "Modell V",
         header_label: "Überschrift",
         show_header: "Überschrift anzeigen",
         show_icons: "Icons anzeigen",
@@ -86,6 +95,9 @@ const TRANSLATIONS = {
         mower_entity: "Entité de la tondeuse",
         zone_entity: "Entité de sélection de zone",
         camera_entity: "Entité Caméra/Image",
+        model_label: "Modèle",
+        model_x: "Modèle X",
+        model_v: "Modèle V",
         header_label: "En-tête",
         show_header: "Afficher l'en-tête",
         show_icons: "Show icons",
@@ -251,6 +263,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             entity: mower,
             zone_entity: zone,
             camera_entity: camera,
+            model: "x",
             header: TRANSLATIONS[hass?.language || "en"].header,
             show_header: true,
         };
@@ -262,11 +275,20 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._zoneEntity = config.zone_entity;
         this._cameraEntity = config.camera_entity;
         this._header = config.header || TRANSLATIONS["en"].header;
+        this._model = (config.model || "x").toLowerCase() === "v" ? "v" : "x";
         this._showHeader = config.show_header !== false;
         this._showIcons = config.show_icons !== false;
         this._showText = config.show_text !== false;
+        if (!this._isModelX()) {
+            this._drawEnabled = false;
+            this._drawCursorPoint = null;
+        }
         this._render();
         this._initialized = true;
+    }
+
+    _isModelX() {
+        return this._model === "x";
     }
 
     set hass(hass) {
@@ -465,7 +487,7 @@ class SunseekerMowerControlCard extends HTMLElement {
     _onDrawOverlayClick(event) {
         const overlay = this.shadowRoot?.getElementById("draw-overlay");
         const bounds = this._getMapBounds();
-        if (!this._drawEnabled || !overlay || !bounds) {
+        if (!this._isModelX() || !this._drawEnabled || !overlay || !bounds) {
             return;
         }
         const rect = overlay.getBoundingClientRect();
@@ -481,7 +503,7 @@ class SunseekerMowerControlCard extends HTMLElement {
     _onDrawOverlayPointerMove(event) {
         const overlay = this.shadowRoot?.getElementById("draw-overlay");
         const bounds = this._getMapBounds();
-        if (!this._drawEnabled || !overlay || !bounds || this._drawPoints.length === 0) {
+        if (!this._isModelX() || !this._drawEnabled || !overlay || !bounds || this._drawPoints.length === 0) {
             return;
         }
 
@@ -514,7 +536,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             return;
         }
 
-        overlay.classList.toggle("is-enabled", this._drawEnabled && !!bounds);
+        overlay.classList.toggle("is-enabled", this._isModelX() && this._drawEnabled && !!bounds);
 
         const width = overlay.clientWidth;
         const height = overlay.clientHeight;
@@ -522,7 +544,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             return;
         }
 
-        if (!bounds || !this._drawEnabled) {
+        if (!this._isModelX() || !bounds || !this._drawEnabled) {
             overlay.innerHTML = "";
             return;
         }
@@ -554,13 +576,14 @@ class SunseekerMowerControlCard extends HTMLElement {
         const toggleBtn = this.shadowRoot?.getElementById("toggle-draw-btn");
         const drawControls = this.shadowRoot?.getElementById("draw-controls");
         const hasMap = !!this._getMapBounds();
-        const showDrawControls = hasMap && this._drawEnabled;
+        const supportsDrawing = this._isModelX();
+        const showDrawControls = supportsDrawing && hasMap && this._drawEnabled;
 
         if (sendBtn) {
-            sendBtn.disabled = !hasMap || this._drawPoints.length < 3;
+            sendBtn.disabled = !supportsDrawing || !hasMap || this._drawPoints.length < 3;
         }
         if (clearBtn) {
-            clearBtn.disabled = this._drawPoints.length === 0;
+            clearBtn.disabled = !supportsDrawing || this._drawPoints.length === 0;
         }
         if (drawControls) {
             drawControls.hidden = !showDrawControls;
@@ -575,8 +598,9 @@ class SunseekerMowerControlCard extends HTMLElement {
                 : _t("area_missing_map", this._hass);
         }
         if (toggleBtn) {
-            toggleBtn.disabled = !hasMap;
-            toggleBtn.classList.toggle("is-active", this._drawEnabled && hasMap);
+            toggleBtn.hidden = !supportsDrawing;
+            toggleBtn.disabled = !supportsDrawing || !hasMap;
+            toggleBtn.classList.toggle("is-active", supportsDrawing && this._drawEnabled && hasMap);
             toggleBtn.innerHTML = `
                 ${this._showIcons ? `<ha-icon icon="${this._drawEnabled ? "mdi:pencil-off" : "mdi:pencil"}"></ha-icon>` : ""}
                 ${this._showText ? _t("mow_area", this._hass) : ""}
@@ -585,7 +609,7 @@ class SunseekerMowerControlCard extends HTMLElement {
     }
 
     _toggleDrawing() {
-        if (!this._getMapBounds()) {
+        if (!this._isModelX() || !this._getMapBounds()) {
             return;
         }
         this._drawEnabled = !this._drawEnabled;
@@ -620,11 +644,17 @@ class SunseekerMowerControlCard extends HTMLElement {
                 });
                 return;
             case "end_task":
+                if (!this._isModelX()) {
+                    return;
+                }
                 this._hass.callService("sunseeker", "stop_task", {
                     entity_id: this._entity,
                 });
                 return;
             case "send_area":
+                if (!this._isModelX()) {
+                    return;
+                }
                 if (this._drawPoints.length < 3) {
                     return;
                 }
@@ -872,11 +902,13 @@ class SunseekerMowerControlCard extends HTMLElement {
                     ${this._showIcons ? '<ha-icon icon="mdi:home-import-outline"></ha-icon>' : ''}
                     ${this._showText ? _t("home", this._hass) : ''}
                 </button>
+                ${this._isModelX() ? `
                 <button class="action-btn" id="end-task-btn">
                     ${this._showIcons ? '<ha-icon icon="mdi:flag-checkered"></ha-icon>' : ''}
                     ${this._showText ? _t("end_task", this._hass) : ''}
                 </button>
                 <button class="action-btn" id="toggle-draw-btn"></button>
+                ` : ""}
             </div>
 
 
@@ -918,10 +950,22 @@ class SunseekerMowerControlCard extends HTMLElement {
         mowerBlock.querySelector("#pause-btn").onclick = () => this._callMowerService("pause");
         mowerBlock.querySelector("#stop-btn").onclick = () => this._callMowerService("stop");
         mowerBlock.querySelector("#home-btn").onclick = () => this._callMowerService("home");
-        mowerBlock.querySelector("#end-task-btn").onclick = () => this._callMowerService("end_task");
-        mowerBlock.querySelector("#toggle-draw-btn").onclick = () => this._toggleDrawing();
-        mowerBlock.querySelector("#send-area-btn").onclick = () => this._callMowerService("send_area");
-        mowerBlock.querySelector("#clear-area-btn").onclick = () => this._clearDrawPoints();
+        const endTaskBtn = mowerBlock.querySelector("#end-task-btn");
+        if (endTaskBtn) {
+            endTaskBtn.onclick = () => this._callMowerService("end_task");
+        }
+        const toggleDrawBtn = mowerBlock.querySelector("#toggle-draw-btn");
+        if (toggleDrawBtn) {
+            toggleDrawBtn.onclick = () => this._toggleDrawing();
+        }
+        const sendAreaBtn = mowerBlock.querySelector("#send-area-btn");
+        if (sendAreaBtn) {
+            sendAreaBtn.onclick = () => this._callMowerService("send_area");
+        }
+        const clearAreaBtn = mowerBlock.querySelector("#clear-area-btn");
+        if (clearAreaBtn) {
+            clearAreaBtn.onclick = () => this._clearDrawPoints();
+        }
 
         this._updateDrawControls();
         requestAnimationFrame(() => this._renderDrawOverlay());
@@ -984,6 +1028,9 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     get _header() {
         return this._config?.header || "";
     }
+    get _model() {
+        return (this._config?.model || "x").toLowerCase() === "v" ? "v" : "x";
+    }
     get _showHeader() {
         return this._config?.show_header !== false;
     }
@@ -1017,6 +1064,12 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <br />
                 <label for="camera_entity">${_t("camera_entity", this._hass)}</label>
                 <span id="picker-camera"></span>
+                <br />
+                <label for="model">${_t("model_label", this._hass)}</label>
+                <select id="model">
+                    <option value="x" ${this._model === "x" ? "selected" : ""}>${_t("model_x", this._hass)}</option>
+                    <option value="v" ${this._model === "v" ? "selected" : ""}>${_t("model_v", this._hass)}</option>
+                </select>
                 <br />
                 <label for="header">${_t("header_label", this._hass)}</label>
                 <input
@@ -1116,6 +1169,10 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         };
         this.querySelector("#show_text").onchange = (ev) => {
             this._config = { ...this._config, show_text: ev.target.checked };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#model").onchange = (ev) => {
+            this._config = { ...this._config, model: ev.target.value };
             this._fireConfigChanged();
         };
     }
