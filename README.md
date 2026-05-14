@@ -1,5 +1,7 @@
 # sunseeker-mower-control-card
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
+
 A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integrations/sunseeker/) integration that puts full mower control, a live map view, zone selection, and a freehand area-drawing tool all in one card.
 
 <img width="1006" height="805" alt="image" src="https://github.com/user-attachments/assets/ce5fb40d-d44e-4d3f-9b10-9008bf59b478" />
@@ -16,7 +18,7 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 - **Live state display** — shows the current mower state (e.g. Mowing, Charging, Standby, Stuck) translated into the dashboard language.
 - **Model selection** — choose between *Model X* (enables drawing and End task) and *Model V* (standard controls only).
 - **Configurable button appearance** — icons and text labels can each be toggled on/off independently.
-- **Localised UI** — all button labels and state values are translated for English, Danish, German, and French, following the user's Home Assistant language setting.
+- **Localised UI** — all button labels and state values are translated for English, Danish, Finnish, French, German, and Polish, following the user's Home Assistant language setting.
 - **Visual editor** — full support for the Lovelace UI editor; no YAML required.
 
 ---
@@ -31,6 +33,15 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 ---
 
 ## Installation
+
+### HACS (recommended)
+
+1. Open **HACS** in your Home Assistant instance.
+2. Go to **Frontend** and click **+ Explore & Download Repositories**.
+3. Search for **Sunseeker Mower Control Card** and click **Download**.
+4. Reload your browser or the Lovelace resources.
+
+### Manual
 
 1. Copy `sunseeker-mower-control-card.js` into your `/config/www/sunseeker-mower-control-card/` directory (or any subfolder of `www/`).
 2. Add the resource in **Settings → Dashboards → Resources**:
