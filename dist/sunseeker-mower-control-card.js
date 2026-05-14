@@ -103,114 +103,202 @@ const TRANSLATIONS = {
         show_icons: "Show icons",
         show_text: "Show button text",
     },
+    fi: {
+        header: "Ruohonleikkurin ohjaus",
+        start: "Käynnistä",
+        pause: "Tauko",
+        stop: "Pysäytä",
+        home: "Koti",
+        end_task: "Lopeta tehtävä",
+        enable_drawing: "Ota piirto käyttöön",
+        disable_drawing: "Poista piirto käytöstä",
+        clear_area: "Tyhjennä alue",
+        mow_area: "Leikkaa alue",
+        area_points: "Alueen pisteet",
+        area_draw_hint: "Napauta karttaa piirtääksesi leikkuualueen",
+        area_missing_map: "Ei karttatietoja piirtämistä varten",
+        state: "Tila",
+        mower_entity: "Ruohonleikkuri-entiteetti",
+        zone_entity: "Vyöhykevalinta-entiteetti",
+        camera_entity: "Kamera/Kuva-entiteetti",
+        model_label: "Malli",
+        model_x: "Malli X",
+        model_v: "Malli V",
+        header_label: "Otsikko",
+        show_header: "Näytä otsikko",
+        show_icons: "Näytä kuvakkeet",
+        show_text: "Näytä painikkeiden teksti",
+    },
+    pl: {
+        header: "Sterowanie kosiarką",
+        start: "Start",
+        pause: "Pauza",
+        stop: "Stop",
+        home: "Dom",
+        end_task: "Zakończ zadanie",
+        enable_drawing: "Włącz rysowanie",
+        disable_drawing: "Wyłącz rysowanie",
+        clear_area: "Wyczyść obszar",
+        mow_area: "Kosz obszar",
+        area_points: "Punkty obszaru",
+        area_draw_hint: "Dotknij mapy, aby narysować obszar koszenia",
+        area_missing_map: "Brak danych mapy do rysowania",
+        state: "Stan",
+        mower_entity: "Encja kosiarki",
+        zone_entity: "Encja wyboru strefy",
+        camera_entity: "Encja kamery/obrazu",
+        model_label: "Model",
+        model_x: "Model X",
+        model_v: "Model V",
+        header_label: "Nagłówek",
+        show_header: "Pokaż nagłówek",
+        show_icons: "Pokaż ikony",
+        show_text: "Pokaż tekst przycisków",
+    },
     state_values: {
         standby: {
             en: "Standby",
             da: "Standby",
             de: "Bereitschaft",
-            fr: "Veille"
+            fr: "Veille",
+            fi: "Valmiustila",
+            pl: "Czuwanie"
         },
         mowing: {
             en: "Mowing",
             da: "Slår græs",
             de: "Mähen",
-            fr: "Tonte"
+            fr: "Tonte",
+            fi: "Leikkaa",
+            pl: "Koszenie"
         },
         on_the_way_home: {
             en: "Going back to dock",
             da: "På vej hjem",
             de: "Auf dem Heimweg",
-            fr: "Retour à la base"
+            fr: "Retour à la base",
+            fi: "Palaa telakkaan",
+            pl: "Powrót do stacji"
         },
         mowing_border: {
             en: "Mowing border",
             da: "Kanter græs",
             de: "Rand mähen",
-            fr: "Tonte des bordures"
+            fr: "Tonte des bordures",
+            fi: "Leikkaa reunoja",
+            pl: "Koszenie krawędzi"
         },
         idle: {
             en: "Idle",
             da: "Inaktiv",
             de: "Leerlauf",
-            fr: "Inactif"
+            fr: "Inactif",
+            fi: "Jouten",
+            pl: "Bezczynny"
         },
         working: {
             en: "Working",
             da: "Arbejder",
             de: "Arbeitet",
-            fr: "Travail"
+            fr: "Travail",
+            fi: "Työskentelee",
+            pl: "Pracuje"
         },
         pause: {
             en: "Paused",
             da: "Pause",
             de: "Pause",
-            fr: "Pause"
+            fr: "Pause",
+            fi: "Tauolla",
+            pl: "Wstrzymany"
         },
         error: {
             en: "error",
             da: "Fejl",
             de: "Fehler",
-            fr: "Erreur"
+            fr: "Erreur",
+            fi: "Virhe",
+            pl: "Błąd"
         },
         return: {
             en: "Returning",
             da: "Returnerer",
             de: "Zurückkehren",
-            fr: "Retour"
+            fr: "Retour",
+            fi: "Palaamassa",
+            pl: "Powrót"
         },
         return_pause: {
             en: "Return paused",
             da: "Return pause",
             de: "Rückkehr Pause",
-            fr: "Pause retour"
+            fr: "Pause retour",
+            fi: "Paluu tauolla",
+            pl: "Powrót wstrzymany"
         },
         charging: {
             en: "Charging",
             da: "Lader op",
             de: "Lädt",
-            fr: "En charge"
+            fr: "En charge",
+            fi: "Latautuu",
+            pl: "Ładowanie"
         },
         charging_full: {
             en: "Charged",
             da: "Fuld opladning",
             de: "Voll geladen",
-            fr: "Charge complète"
+            fr: "Charge complète",
+            fi: "Ladattu",
+            pl: "Naładowany"
         },
         offline: {
             en: "Offline",
             da: "Offline",
             de: "Offline",
-            fr: "Hors ligne"
+            fr: "Hors ligne",
+            fi: "Offline",
+            pl: "Offline"
         },
         locating: {
             en: "Locating",
             da: "Finder position",
             de: "Position wird gesucht",
-            fr: "Localisation"
+            fr: "Localisation",
+            fi: "Paikantaa",
+            pl: "Lokalizowanie"
         },
         stop: {
             en: "Stopped",
             da: "Stoppet",
             de: "Gestoppt",
-            fr: "Arrêté"
+            fr: "Arrêté",
+            fi: "Pysäytetty",
+            pl: "Zatrzymany"
         },
         continue_mowing: {
             en: "Continue mowing",
             da: "Fortsæt slåning",
             de: "Weiter mähen",
-            fr: "Continuer la tonte"
+            fr: "Continuer la tonte",
+            fi: "Jatka leikkaamista",
+            pl: "Kontynuuj koszenie"
         },
         stuck: {
             en: "Stuck",
             da: "Sidder fast",
             de: "Festgefahren",
-            fr: "Bloqué"
+            fr: "Bloqué",
+            fi: "Jumissa",
+            pl: "Utknął"
         },
         updating_firmware: {
             en: "Opdating firmware",
             da: "Opdatere firmware",
             de: "Opdating firmware",
-            fr: "Opdating firmware"
+            fr: "Opdating firmware",
+            fi: "Päivittää laiteohjelmistoa",
+            pl: "Aktualizacja oprogramowania"
         }
     }
 };
@@ -1108,7 +1196,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <br />
 
                 <br />
-                Version 1.0.10
+                Version 1.0.11
             </div>
         `;
 
