@@ -91,5 +91,6 @@ show_text: true
 
 | Version | Notes |
 |---|---|
-| 1.0.10 | Current release |
+| 1.0.10 | release |
+| 1.0.11 | Added Finnish and Polish language |
 
