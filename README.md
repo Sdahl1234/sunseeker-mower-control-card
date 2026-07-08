@@ -91,6 +91,7 @@ show_text: true
 
 | Version | Notes |
 |---|---|
-| 1.0.10 | release |
+| 1.0.12 | Improved layout spacing logic: fixed top padding behavior for hidden header with/without map, reduced state-to-zone spacing, removed extra bottom gap when zones are hidden, and ensured zone buttons render correctly after state updates (including when no map entity is selected). |
 | 1.0.11 | Added Finnish and Polish language |
+| 1.0.10 | release |
 

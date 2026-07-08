@@ -663,6 +663,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         const mapHint = this.shadowRoot?.getElementById("map-draw-hint");
         const toggleBtn = this.shadowRoot?.getElementById("toggle-draw-btn");
         const drawControls = this.shadowRoot?.getElementById("draw-controls");
+        const zoneButtonsContainer = this.shadowRoot?.getElementById("zone-buttons");
+        const mowerBlock = this.shadowRoot?.querySelector(".mower-block");
         const hasMap = !!this._getMapBounds();
         const supportsDrawing = this._isModelX();
         const showDrawControls = supportsDrawing && hasMap && this._drawEnabled;
@@ -676,6 +678,10 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (drawControls) {
             drawControls.hidden = !showDrawControls;
             drawControls.classList.toggle("is-hidden", !showDrawControls);
+        }
+        if (mowerBlock) {
+            const hasVisibleZones = !!zoneButtonsContainer && !zoneButtonsContainer.hidden;
+            mowerBlock.classList.toggle("compact-state", !hasVisibleZones && !showDrawControls);
         }
         if (pointsCounter) {
             pointsCounter.textContent = `${_t("area_points", this._hass)}: ${this._drawPoints.length}`;
@@ -781,33 +787,47 @@ class SunseekerMowerControlCard extends HTMLElement {
                     background: var(--ha-card-bg);
                     box-shadow: 0 2px 6px rgba(25, 118, 210, 0.08);
                     margin: 0 auto;
-                    padding: 18px 12px 12px 12px;
+                    padding: 12px;
+                }
+                .card-container.no-header {
+                    padding-top: 0;
+                }
+                .card-container.no-header.has-map {
+                    padding-top: 12px;
                 }
                 .header {
                     font-size: 1.3em;
                     font-weight: bold;
-                    margin-bottom: 12px;
+                    margin-bottom: 2px;
                     text-align: center;
                     color: var(--ha-card-text);
                 }
                 .mower-block {
                     text-align: center;
-                    margin-bottom: 18px;
+                    margin-bottom: 0;
                     border: none;
                     border-radius: 12px;
-                    padding: 12px 8px 8px 8px;
+                    padding: 8px;
                     background: var(--ha-card-bg);
                     box-shadow: none;
                     margin-left: auto;
                     margin-right: auto;
                 }
                 .zone-buttons {
-                    margin-bottom: 8px;
+                    margin-bottom: 0;
                     display: flex;
                     flex-wrap: wrap;
                     justify-content: center;
                     gap: 8px;
-                    margin-top: 24px;
+                    margin-top: 6px;
+                }
+                .zone-buttons.is-hidden,
+                .zone-buttons[hidden] {
+                    display: none !important;
+                    margin: 0;
+                }
+                .card-container.no-map .zone-buttons {
+                    margin-top: 0;
                 }
                 .zone-btn {
                     padding: 4px 16px;
@@ -831,8 +851,11 @@ class SunseekerMowerControlCard extends HTMLElement {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
                     gap: 8px;
-                    margin-top: 16px;
+                    margin-top: 0;
                     width: 100%;
+                }
+                .card-container.has-map .action-buttons {
+                    margin-top: 12px;
                 }
                 .action-btn {
                     width: 100%;
@@ -900,14 +923,24 @@ class SunseekerMowerControlCard extends HTMLElement {
                 }
                 .state-row {
                     margin-top: 10px;
-                    margin-bottom: 18px;
+                    margin-bottom: 8px;
                     font-weight: bold;
                     color: var(--ha-card-text);
+                }
+                .mower-block.compact-state {
+                    padding-bottom: 0;
+                }
+                .mower-block.compact-state .state-row {
+                    margin-bottom: 0;
                 }
             </style>
             <div class="card-container" id="card-content"></div>
         `;
         const cardContent = this.shadowRoot.getElementById("card-content");
+        const hasConfiguredMap = !!(this._cameraEntity && typeof this._cameraEntity === "string" && this._cameraEntity.trim() !== "");
+        cardContent.classList.toggle("no-header", !this._showHeader);
+        cardContent.classList.toggle("has-map", hasConfiguredMap);
+        cardContent.classList.toggle("no-map", !hasConfiguredMap);
         cardContent.innerHTML = "";
 
         // Add header if enabled
@@ -1064,9 +1097,35 @@ class SunseekerMowerControlCard extends HTMLElement {
     _updateZoneButtons() {
         // Update zone button selection and handlers
         if (!this.shadowRoot) return;
+        const zoneButtonsContainer = this.shadowRoot.getElementById("zone-buttons");
+        const mowerBlock = this.shadowRoot.querySelector(".mower-block");
         const filteredZones = this._zones.filter(
             zone => zone.toLowerCase() !== "global"
         );
+        const hasVisibleZones = filteredZones.length > 0;
+
+        if (zoneButtonsContainer) {
+            zoneButtonsContainer.hidden = !hasVisibleZones;
+            zoneButtonsContainer.classList.toggle("is-hidden", !hasVisibleZones);
+            zoneButtonsContainer.innerHTML = filteredZones.map((zone) => {
+                const selectedClass = this._selectedZones.includes(zone) ? " selected" : "";
+                const safeId = zone.replace(/[^a-zA-Z0-9_-]/g, "_");
+                return `
+                    <button
+                        type="button"
+                        class="zone-btn${selectedClass}"
+                        id="zone-btn-${safeId}"
+                    >${zone}</button>
+                `;
+            }).join("");
+        }
+
+        const hasMap = !!this._getMapBounds();
+        const showDrawControls = this._isModelX() && hasMap && this._drawEnabled;
+        if (mowerBlock) {
+            mowerBlock.classList.toggle("compact-state", !hasVisibleZones && !showDrawControls);
+        }
+
         filteredZones.forEach(zone => {
             const btn = this.shadowRoot.getElementById(`zone-btn-${zone.replace(/[^a-zA-Z0-9_-]/g, "_")}`);
             if (btn) {
@@ -1196,7 +1255,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <br />
 
                 <br />
-                Version 1.0.11
+                Version 1.0.12
             </div>
         `;
 
