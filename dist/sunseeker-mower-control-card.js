@@ -994,6 +994,14 @@ class SunseekerMowerControlCard extends HTMLElement {
                     margin-top: 0;
                     width: 100%;
                 }
+                .action-buttons.is-five-actions {
+                    grid-template-columns: repeat(5, minmax(0, 1fr));
+                }
+                .action-buttons.is-five-actions .action-btn {
+                    padding: 7px 6px;
+                    font-size: 0.85em;
+                    gap: 4px;
+                }
                 .card-container.has-map .action-buttons {
                     margin-top: 12px;
                 }
@@ -1142,11 +1150,14 @@ class SunseekerMowerControlCard extends HTMLElement {
         // Add mower controls below the picture card
         const stateLabel = _t("state", this._hass);
         const stateValue = _stateValue(this._mowerState, this._hass);
+        const actionButtonsClass = this._showBorder && !this._isModelX()
+            ? "action-buttons is-five-actions"
+            : "action-buttons";
 
         const mowerBlock = document.createElement("div");
         mowerBlock.className = "mower-block";
         mowerBlock.innerHTML = `
-            <div class="action-buttons">
+            <div class="${actionButtonsClass}">
                 <button class="action-btn" id="start-btn">
                     ${this._showIcons ? '<ha-icon icon="mdi:play"></ha-icon>' : ''}
                     ${this._showText ? _t("start", this._hass) : ''}
