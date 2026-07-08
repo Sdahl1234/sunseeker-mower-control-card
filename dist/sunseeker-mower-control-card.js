@@ -18,6 +18,10 @@ const TRANSLATIONS = {
         mower_entity: "Mower entity",
         zone_entity: "Zone select entity",
         camera_entity: "Camera/Image entity",
+        map_position: "Map position",
+        map_position_top: "Top",
+        map_position_left: "Left",
+        map_position_right: "Right",
         model_label: "Model",
         model_x: "Model X",
         model_v: "Model V",
@@ -47,6 +51,10 @@ const TRANSLATIONS = {
         mower_entity: "Plæneklipper enhed",
         zone_entity: "Zonevælger enhed",
         camera_entity: "Kamera/Billede enhed",
+        map_position: "Kort placering",
+        map_position_top: "Top",
+        map_position_left: "Venstre",
+        map_position_right: "Højre",
         model_label: "Model",
         model_x: "Model X",
         model_v: "Model V",
@@ -76,6 +84,10 @@ const TRANSLATIONS = {
         mower_entity: "Mäher Entität",
         zone_entity: "Zonenauswahl Entität",
         camera_entity: "Kamera/Bild Entität",
+        map_position: "Kartenposition",
+        map_position_top: "Oben",
+        map_position_left: "Links",
+        map_position_right: "Rechts",
         model_label: "Modell",
         model_x: "Modell X",
         model_v: "Modell V",
@@ -105,6 +117,10 @@ const TRANSLATIONS = {
         mower_entity: "Entité de la tondeuse",
         zone_entity: "Entité de sélection de zone",
         camera_entity: "Entité Caméra/Image",
+        map_position: "Position de la carte",
+        map_position_top: "Haut",
+        map_position_left: "Gauche",
+        map_position_right: "Droite",
         model_label: "Modèle",
         model_x: "Modèle X",
         model_v: "Modèle V",
@@ -134,6 +150,10 @@ const TRANSLATIONS = {
         mower_entity: "Ruohonleikkuri-entiteetti",
         zone_entity: "Vyöhykevalinta-entiteetti",
         camera_entity: "Kamera/Kuva-entiteetti",
+        map_position: "Kartan sijainti",
+        map_position_top: "Ylhäällä",
+        map_position_left: "Vasemmalla",
+        map_position_right: "Oikealla",
         model_label: "Malli",
         model_x: "Malli X",
         model_v: "Malli V",
@@ -163,6 +183,10 @@ const TRANSLATIONS = {
         mower_entity: "Encja kosiarki",
         zone_entity: "Encja wyboru strefy",
         camera_entity: "Encja kamery/obrazu",
+        map_position: "Pozycja mapy",
+        map_position_top: "Góra",
+        map_position_left: "Lewa",
+        map_position_right: "Prawa",
         model_label: "Model",
         model_x: "Model X",
         model_v: "Model V",
@@ -354,6 +378,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._drawEnabled = false;
         this._showBorder = false;
         this._borderButtonEntity = "";
+        this._mapPosition = "top";
         this._overlayResizeObserver = null;
         this._initialized = false;
     }
@@ -371,6 +396,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             entity: mower,
             zone_entity: zone,
             camera_entity: camera,
+            map_position: "top",
             model: "x",
             header: TRANSLATIONS[hass?.language || "en"].header,
             show_header: true,
@@ -383,6 +409,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._entity = config.entity;
         this._zoneEntity = config.zone_entity;
         this._cameraEntity = config.camera_entity;
+        this._mapPosition = this._normalizeMapPosition(config.map_position);
         this._header = config.header || TRANSLATIONS["en"].header;
         this._model = (config.model || "x").toLowerCase() === "v" ? "v" : "x";
         this._showHeader = config.show_header !== false;
@@ -400,6 +427,10 @@ class SunseekerMowerControlCard extends HTMLElement {
 
     _isModelX() {
         return this._model === "x";
+    }
+
+    _normalizeMapPosition(value) {
+        return value === "left" || value === "right" ? value : "top";
     }
 
     set hass(hass) {
@@ -1005,6 +1036,10 @@ class SunseekerMowerControlCard extends HTMLElement {
                 .card-container.has-map .action-buttons {
                     margin-top: 12px;
                 }
+                .card-container.map-left .action-buttons,
+                .card-container.map-right .action-buttons {
+                    margin-top: 0;
+                }
                 .action-btn {
                     width: 100%;
                     padding: 8px 10px;
@@ -1029,6 +1064,30 @@ class SunseekerMowerControlCard extends HTMLElement {
                     position: relative;
                     border-radius: 12px;
                     overflow: hidden;
+                }
+                .content-body {
+                    display: block;
+                }
+                .card-container.map-left .content-body,
+                .card-container.map-right .content-body {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+                    gap: 12px;
+                    align-items: start;
+                }
+                .card-container.map-left .mower-block,
+                .card-container.map-right .mower-block {
+                    padding-top: 0;
+                }
+                .content-body > .map-wrapper,
+                .content-body > .mower-block {
+                    min-width: 0;
+                }
+                @media (max-width: 900px) {
+                    .card-container.map-left .content-body,
+                    .card-container.map-right .content-body {
+                        display: block;
+                    }
                 }
                 .map-overlay {
                     position: absolute;
@@ -1089,6 +1148,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         cardContent.classList.toggle("no-header", !this._showHeader);
         cardContent.classList.toggle("has-map", hasConfiguredMap);
         cardContent.classList.toggle("no-map", !hasConfiguredMap);
+        cardContent.classList.toggle("map-left", hasConfiguredMap && this._mapPosition === "left");
+        cardContent.classList.toggle("map-right", hasConfiguredMap && this._mapPosition === "right");
         cardContent.innerHTML = "";
 
         // Add header if enabled
@@ -1099,8 +1160,13 @@ class SunseekerMowerControlCard extends HTMLElement {
             cardContent.appendChild(headerDiv);
         }
 
+        const contentBody = document.createElement("div");
+        contentBody.className = "content-body";
+        cardContent.appendChild(contentBody);
+
         // Only add picture-entity card if camera entity is set and not empty
         let pictureCard = null;
+        let mapWrapper = null;
         if (this._cameraEntity && typeof this._cameraEntity === "string" && this._cameraEntity.trim() !== "") {
             const cardConfig = {
                 type: "picture-entity",
@@ -1126,7 +1192,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             }
             pictureCard.hass = this._hass;
 
-            const mapWrapper = document.createElement("div");
+            mapWrapper = document.createElement("div");
             mapWrapper.className = "map-wrapper";
             mapWrapper.appendChild(pictureCard);
 
@@ -1137,8 +1203,6 @@ class SunseekerMowerControlCard extends HTMLElement {
             mapOverlay.addEventListener("pointermove", (event) => this._onDrawOverlayPointerMove(event));
             mapOverlay.addEventListener("pointerleave", () => this._onDrawOverlayPointerLeave());
             mapWrapper.appendChild(mapOverlay);
-
-            cardContent.appendChild(mapWrapper);
 
             if (this._overlayResizeObserver) {
                 this._overlayResizeObserver.disconnect();
@@ -1221,7 +1285,15 @@ class SunseekerMowerControlCard extends HTMLElement {
                     ).join("")}
             </div>
         `;
-        cardContent.appendChild(mowerBlock);
+        if (mapWrapper && this._mapPosition === "right") {
+            contentBody.appendChild(mowerBlock);
+            contentBody.appendChild(mapWrapper);
+        } else {
+            if (mapWrapper) {
+                contentBody.appendChild(mapWrapper);
+            }
+            contentBody.appendChild(mowerBlock);
+        }
 
         // Attach event handlers for action buttons
         mowerBlock.querySelector("#start-btn").onclick = () => this._callMowerService("start");
@@ -1336,6 +1408,11 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     }
     get _cameraEntity() {
         return this._config?.camera_entity || "";
+    }
+    get _mapPosition() {
+        return this._config?.map_position === "left" || this._config?.map_position === "right"
+            ? this._config.map_position
+            : "top";
     }
     get _header() {
         return this._config?.header || "";
@@ -1496,6 +1573,13 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <label for="camera_entity">${_t("camera_entity", this._hass)}</label>
                 <span id="picker-camera"></span>
                 <br />
+                <label for="map_position">${_t("map_position", this._hass)}</label>
+                <select id="map_position">
+                    <option value="top" ${this._mapPosition === "top" ? "selected" : ""}>${_t("map_position_top", this._hass)}</option>
+                    <option value="left" ${this._mapPosition === "left" ? "selected" : ""}>${_t("map_position_left", this._hass)}</option>
+                    <option value="right" ${this._mapPosition === "right" ? "selected" : ""}>${_t("map_position_right", this._hass)}</option>
+                </select>
+                <br />
                 <label for="model">${_t("model_label", this._hass)}</label>
                 <select id="model">
                     <option value="x" ${this._model === "x" ? "selected" : ""}>${_t("model_x", this._hass)}</option>
@@ -1551,7 +1635,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 ` : ""}
 
                 <br />
-                Version 1.0.12
+                Version 1.0.13
             </div>
         `;
 
@@ -1612,6 +1696,11 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         };
         this.querySelector("#show_text").onchange = (ev) => {
             this._config = { ...this._config, show_text: ev.target.checked };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#map_position").onchange = (ev) => {
+            const nextMapPosition = ev.target.value === "left" || ev.target.value === "right" ? ev.target.value : "top";
+            this._config = { ...this._config, map_position: nextMapPosition };
             this._fireConfigChanged();
         };
         const showBorderInput = this.querySelector("#show_border");

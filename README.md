@@ -11,7 +11,7 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 ## Features
 
 - **Mower action buttons** — Start, Pause, Stop, and Home (dock) controls that call the appropriate `lawn_mower` or `sunseeker` services. An optional **Border** button can also be shown and triggers the integration's Border button entity via `button.press`. Each button displays a Material Design icon, a text label, or both, configurable per card.
-- **Live map** — embeds a `picture-entity` card showing a live camera or map image from the mower. Automatically discovers the best matching `image.*` entity with `map_data` if no camera entity is explicitly configured.
+- **Live map** — embeds a `picture-entity` card showing a live camera or map image from the mower. Automatically discovers the best matching `image.*` entity with `map_data` if no camera entity is explicitly configured. Map placement can be configured as top, left, or right.
 - **Zone selection** — zone buttons are auto-populated from the zone select entity. Toggle individual zones to target specific areas; the selected zones are passed to `sunseeker.start_mowing`.
 - **Freehand area drawing** (Model X only) — an SVG overlay on the map lets you tap or click to place polygon vertices. A dashed preview line tracks the cursor as you draw. Once three or more points are placed, *Mow area* sends the polygon to the mower via `sunseeker.start_mowing_selected_area`. *Clear area* resets the polygon at any time.
 - **End task button** (Model X only) — calls `sunseeker.stop_task` to terminate the current mowing task.
@@ -58,6 +58,7 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 | `entity` | `string` | **required** | Entity ID of the Sunseeker lawn mower (e.g. `lawn_mower.sunseeker`). |
 | `zone_entity` | `string` | — | Entity ID of the zone select entity (e.g. `select.sunseeker_zone`). Used to populate zone buttons. |
 | `camera_entity` | `string` | — | Entity ID of the camera or image entity for the map view (e.g. `image.sunseeker_mower_map`). Auto-discovered if omitted. |
+| `map_position` | `string` | `"top"` | Position of the map relative to controls: `"top"`, `"left"`, or `"right"`. |
 | `model` | `string` | `"x"` | Mower model. `"x"` enables the area-drawing tool and End task button; `"v"` shows standard controls only. |
 | `header` | `string` | `"Mower Control"` | Card header title (localised default used when omitted). |
 | `show_header` | `boolean` | `true` | Show or hide the card header. |
@@ -79,6 +80,7 @@ type: custom:sunseeker-mower-control-card
 entity: lawn_mower.sunseeker
 zone_entity: select.sunseeker_zone
 camera_entity: image.sunseeker_mower_map
+map_position: top
 model: x
 header: Mower Control
 show_header: true
@@ -93,7 +95,8 @@ show_border: false
 
 | Version | Notes |
 |---|---|
-| 1.0.12 | Added optional Border button with editor toggle (`show_border`, default off), plus layout spacing fixes for header/map combinations and zone/state spacing behavior. |
+| 1.0.13 | Added map position setting (`map_position`: top/left/right). |
+| 1.0.12 | Added optional Border button with editor toggle (`show_border`, default off) and layout spacing fixes for header/map combinations and zone/state spacing behavior. |
 | 1.0.11 | Added Finnish and Polish language |
 | 1.0.10 | release |
 
