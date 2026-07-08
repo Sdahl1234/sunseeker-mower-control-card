@@ -10,7 +10,7 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 
 ## Features
 
-- **Mower action buttons** — Start, Pause, Stop, and Home (dock) controls that call the appropriate `lawn_mower` or `sunseeker` services. Each button displays a Material Design icon, a text label, or both, configurable per card.
+- **Mower action buttons** — Start, Pause, Stop, and Home (dock) controls that call the appropriate `lawn_mower` or `sunseeker` services. An optional **Border** button can also be shown and triggers the integration's Border button entity via `button.press`. Each button displays a Material Design icon, a text label, or both, configurable per card.
 - **Live map** — embeds a `picture-entity` card showing a live camera or map image from the mower. Automatically discovers the best matching `image.*` entity with `map_data` if no camera entity is explicitly configured.
 - **Zone selection** — zone buttons are auto-populated from the zone select entity. Toggle individual zones to target specific areas; the selected zones are passed to `sunseeker.start_mowing`.
 - **Freehand area drawing** (Model X only) — an SVG overlay on the map lets you tap or click to place polygon vertices. A dashed preview line tracks the cursor as you draw. Once three or more points are placed, *Mow area* sends the polygon to the mower via `sunseeker.start_mowing_selected_area`. *Clear area* resets the polygon at any time.
@@ -63,6 +63,7 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 | `show_header` | `boolean` | `true` | Show or hide the card header. |
 | `show_icons` | `boolean` | `true` | Show Material Design icons on action buttons. |
 | `show_text` | `boolean` | `true` | Show text labels on action buttons. |
+| `show_border` | `boolean` | `false` | Show or hide the optional Border action button (when a matching `button.*` Border entity exists). |
 
 ### Minimal YAML example
 
@@ -83,6 +84,7 @@ header: Mower Control
 show_header: true
 show_icons: true
 show_text: true
+show_border: false
 ```
 
 ---
@@ -91,7 +93,7 @@ show_text: true
 
 | Version | Notes |
 |---|---|
-| 1.0.12 | Improved layout spacing logic: fixed top padding behavior for hidden header with/without map, reduced state-to-zone spacing, removed extra bottom gap when zones are hidden, and ensured zone buttons render correctly after state updates (including when no map entity is selected). |
+| 1.0.12 | Added optional Border button with editor toggle (`show_border`, default off), plus layout spacing fixes for header/map combinations and zone/state spacing behavior. |
 | 1.0.11 | Added Finnish and Polish language |
 | 1.0.10 | release |
 

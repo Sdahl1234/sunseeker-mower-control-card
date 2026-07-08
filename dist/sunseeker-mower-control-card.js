@@ -5,6 +5,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stop",
         home: "Home",
+        border: "Border",
         end_task: "End task",
         enable_drawing: "Enable drawing",
         disable_drawing: "Disable drawing",
@@ -24,6 +25,8 @@ const TRANSLATIONS = {
         show_header: "Show header",
         show_icons: "Show icons",
         show_text: "Show button text",
+        show_border: "Show border button",
+        border_entity: "Border entity",
     },
     da: {
         header: "Plæneklipper kontrol",
@@ -31,6 +34,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stop",
         home: "Hjem",
+        border: "Border",
         end_task: "Afslut opgave",
         enable_drawing: "Aktivér tegning",
         disable_drawing: "Deaktivér tegning",
@@ -50,6 +54,8 @@ const TRANSLATIONS = {
         show_header: "Vis overskrift",
         show_icons: "Vis ikoner",
         show_text: "Vis tekst på knapper",
+        show_border: "Vis border-knap",
+        border_entity: "Border entitet",
     },
     de: {
         header: "Mähersteuerung",
@@ -57,6 +63,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Stopp",
         home: "Heim",
+        border: "Border",
         end_task: "Aufgabe beenden",
         enable_drawing: "Zeichnen aktivieren",
         disable_drawing: "Zeichnen deaktivieren",
@@ -76,6 +83,8 @@ const TRANSLATIONS = {
         show_header: "Überschrift anzeigen",
         show_icons: "Icons anzeigen",
         show_text: "Show button text",
+        show_border: "Border-Schaltfläche anzeigen",
+        border_entity: "Border-Entität",
     },
     fr: {
         header: "Contrôle de la tondeuse",
@@ -83,6 +92,7 @@ const TRANSLATIONS = {
         pause: "Pause",
         stop: "Arrêter",
         home: "Accueil",
+        border: "Border",
         end_task: "Terminer la tâche",
         enable_drawing: "Activer le dessin",
         disable_drawing: "Désactiver le dessin",
@@ -102,6 +112,8 @@ const TRANSLATIONS = {
         show_header: "Afficher l'en-tête",
         show_icons: "Show icons",
         show_text: "Show button text",
+        show_border: "Afficher le bouton Border",
+        border_entity: "Entité Border",
     },
     fi: {
         header: "Ruohonleikkurin ohjaus",
@@ -109,6 +121,7 @@ const TRANSLATIONS = {
         pause: "Tauko",
         stop: "Pysäytä",
         home: "Koti",
+        border: "Border",
         end_task: "Lopeta tehtävä",
         enable_drawing: "Ota piirto käyttöön",
         disable_drawing: "Poista piirto käytöstä",
@@ -128,6 +141,8 @@ const TRANSLATIONS = {
         show_header: "Näytä otsikko",
         show_icons: "Näytä kuvakkeet",
         show_text: "Näytä painikkeiden teksti",
+        show_border: "Näytä Border-painike",
+        border_entity: "Border-entiteetti",
     },
     pl: {
         header: "Sterowanie kosiarką",
@@ -135,6 +150,7 @@ const TRANSLATIONS = {
         pause: "Pauza",
         stop: "Stop",
         home: "Dom",
+        border: "Border",
         end_task: "Zakończ zadanie",
         enable_drawing: "Włącz rysowanie",
         disable_drawing: "Wyłącz rysowanie",
@@ -154,6 +170,8 @@ const TRANSLATIONS = {
         show_header: "Pokaż nagłówek",
         show_icons: "Pokaż ikony",
         show_text: "Pokaż tekst przycisków",
+        show_border: "Pokaż przycisk Border",
+        border_entity: "Encja Border",
     },
     state_values: {
         standby: {
@@ -334,6 +352,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._drawPoints = [];
         this._drawCursorPoint = null;
         this._drawEnabled = false;
+        this._showBorder = false;
+        this._borderButtonEntity = "";
         this._overlayResizeObserver = null;
         this._initialized = false;
     }
@@ -354,6 +374,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             model: "x",
             header: TRANSLATIONS[hass?.language || "en"].header,
             show_header: true,
+            show_border: false,
         };
     }
 
@@ -367,6 +388,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._showHeader = config.show_header !== false;
         this._showIcons = config.show_icons !== false;
         this._showText = config.show_text !== false;
+        this._showBorder = config.show_border === true;
+        this._updateBorderButtonEntity();
         if (!this._isModelX()) {
             this._drawEnabled = false;
             this._drawCursorPoint = null;
@@ -383,6 +406,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._hass = hass;
         this._updateZones();
         this._updateMowerState();
+        this._updateBorderButtonEntity();
         // Update embedded picture-entity card's hass property
         if (this.shadowRoot) {
             const pictureCard = this.shadowRoot.querySelector("hui-picture-entity-card");
@@ -447,6 +471,114 @@ class SunseekerMowerControlCard extends HTMLElement {
             .toLowerCase()
             .split(/[^a-z0-9]+/)
             .filter((token) => token.length >= 4);
+    }
+
+    _findBorderButtonEntity() {
+        if (!this._hass) {
+            return "";
+        }
+
+        const allStates = this._hass.states || {};
+        const candidates = Object.entries(allStates)
+            .filter(([entityId]) => entityId.startsWith("button."))
+            .map(([entityId, stateObj]) => ({ entityId, stateObj }));
+
+        if (!candidates.length) {
+            return "";
+        }
+
+        const borderTokens = [
+            "cut_border",
+            "klip_kant",
+            "kanten",
+            "reunaleikkaus",
+            "couper_les_bordures",
+            "kraw",
+            "border",
+        ];
+
+        const mowerObjectId = String(this._entity || "").split(".")[1] || "";
+        const mowerObjectTokens = this._extractHintTokens(mowerObjectId);
+
+        const hintTokens = [
+            ...this._extractHintTokens(this._entity),
+            ...this._extractHintTokens(this._zoneEntity),
+            ...this._extractHintTokens(this._cameraEntity),
+            ...mowerObjectTokens,
+        ];
+
+        let bestCandidate = null;
+        let bestScore = -1;
+
+        candidates.forEach((candidate) => {
+            const entityIdLower = candidate.entityId.toLowerCase();
+            const friendlyName = String(candidate.stateObj?.attributes?.friendly_name || "").toLowerCase();
+            const translationKey = String(candidate.stateObj?.attributes?.translation_key || "").toLowerCase();
+            const uniqueId = String(candidate.stateObj?.attributes?.unique_id || "").toLowerCase();
+            let score = 0;
+            let matchedBorderTokenCount = 0;
+
+            if (entityIdLower.includes("sunseeker")) {
+                score += 2;
+            }
+
+            if (translationKey === "sunseeker_border") {
+                score += 12;
+            }
+
+            borderTokens.forEach((token) => {
+                if (
+                    entityIdLower.includes(token)
+                    || friendlyName.includes(token)
+                    || translationKey.includes(token)
+                    || uniqueId.includes(token)
+                ) {
+                    matchedBorderTokenCount += 1;
+                    score += 4;
+                }
+            });
+
+            const hasBorderSignal = translationKey === "sunseeker_border" || matchedBorderTokenCount > 0;
+            if (!hasBorderSignal) {
+                return;
+            }
+
+            const mowerObjectIdLower = mowerObjectId.toLowerCase();
+            const hasMowerIdMatch = !!mowerObjectIdLower && (
+                entityIdLower.includes(mowerObjectIdLower)
+                || friendlyName.includes(mowerObjectIdLower)
+                || translationKey.includes(mowerObjectIdLower)
+                || uniqueId.includes(mowerObjectIdLower)
+            );
+            if (!hasMowerIdMatch) {
+                return;
+            }
+
+            if (mowerObjectId && entityIdLower.includes(mowerObjectId.toLowerCase())) {
+                score += 6;
+            }
+
+            hintTokens.forEach((token) => {
+                if (
+                    entityIdLower.includes(token)
+                    || friendlyName.includes(token)
+                    || translationKey.includes(token)
+                ) {
+                    score += 2;
+                }
+            });
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+            }
+        });
+
+        return bestScore > 0 ? (bestCandidate?.entityId || "") : "";
+    }
+
+    _updateBorderButtonEntity() {
+        this._borderButtonEntity = this._findBorderButtonEntity();
     }
 
     _findMapDataState() {
@@ -763,6 +895,14 @@ class SunseekerMowerControlCard extends HTMLElement {
             case "home":
                 service = "dock";
                 break;
+            case "border":
+                if (!this._showBorder || !this._borderButtonEntity) {
+                    return;
+                }
+                this._hass.callService("button", "press", {
+                    entity_id: this._borderButtonEntity,
+                });
+                return;
             default:
                 return;
         }
@@ -1023,6 +1163,12 @@ class SunseekerMowerControlCard extends HTMLElement {
                     ${this._showIcons ? '<ha-icon icon="mdi:home-import-outline"></ha-icon>' : ''}
                     ${this._showText ? _t("home", this._hass) : ''}
                 </button>
+                ${this._showBorder ? `
+                <button class="action-btn" id="border-btn" ${this._borderButtonEntity ? "" : "disabled"}>
+                    ${this._showIcons ? '<ha-icon icon="mdi:border-outside"></ha-icon>' : ''}
+                    ${this._showText ? _t("border", this._hass) : ''}
+                </button>
+                ` : ""}
                 ${this._isModelX() ? `
                 <button class="action-btn" id="end-task-btn">
                     ${this._showIcons ? '<ha-icon icon="mdi:flag-checkered"></ha-icon>' : ''}
@@ -1071,6 +1217,10 @@ class SunseekerMowerControlCard extends HTMLElement {
         mowerBlock.querySelector("#pause-btn").onclick = () => this._callMowerService("pause");
         mowerBlock.querySelector("#stop-btn").onclick = () => this._callMowerService("stop");
         mowerBlock.querySelector("#home-btn").onclick = () => this._callMowerService("home");
+        const borderBtn = mowerBlock.querySelector("#border-btn");
+        if (borderBtn) {
+            borderBtn.onclick = () => this._callMowerService("border");
+        }
         const endTaskBtn = mowerBlock.querySelector("#end-task-btn");
         if (endTaskBtn) {
             endTaskBtn.onclick = () => this._callMowerService("end_task");
@@ -1138,8 +1288,12 @@ class SunseekerMowerControlCard extends HTMLElement {
     _updateDom() {
         // Only update state row and zone buttons
         const stateRow = this.shadowRoot.getElementById("state-row");
+        const borderBtn = this.shadowRoot.getElementById("border-btn");
         if (stateRow) {
             stateRow.textContent = `${_t("state", this._hass)}: ${_stateValue(this._mowerState, this._hass)}`;
+        }
+        if (borderBtn) {
+            borderBtn.disabled = !this._borderButtonEntity;
         }
         this._updateDrawControls();
         this._renderDrawOverlay();
@@ -1187,9 +1341,128 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     get _showText() {
         return this._config?.show_text !== false;
     }
+    get _showBorder() {
+        return this._config?.show_border === true;
+    }
+
+    _extractHintTokens(value) {
+        if (!value || typeof value !== "string") {
+            return [];
+        }
+        return value
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((token) => token.length >= 4);
+    }
+
+    _findBorderButtonEntity() {
+        if (!this._hass) {
+            return "";
+        }
+
+        const allStates = this._hass.states || {};
+        const candidates = Object.entries(allStates)
+            .filter(([entityId]) => entityId.startsWith("button."))
+            .map(([entityId, stateObj]) => ({ entityId, stateObj }));
+
+        if (!candidates.length) {
+            return "";
+        }
+
+        const borderTokens = [
+            "cut_border",
+            "klip_kant",
+            "kanten",
+            "reunaleikkaus",
+            "couper_les_bordures",
+            "kraw",
+            "border",
+        ];
+
+        const mowerObjectId = String(this._entity || "").split(".")[1] || "";
+        const mowerObjectTokens = this._extractHintTokens(mowerObjectId);
+
+        const hintTokens = [
+            ...this._extractHintTokens(this._entity),
+            ...this._extractHintTokens(this._zoneEntity),
+            ...this._extractHintTokens(this._cameraEntity),
+            ...mowerObjectTokens,
+        ];
+
+        let bestCandidate = null;
+        let bestScore = -1;
+
+        candidates.forEach((candidate) => {
+            const entityIdLower = candidate.entityId.toLowerCase();
+            const friendlyName = String(candidate.stateObj?.attributes?.friendly_name || "").toLowerCase();
+            const translationKey = String(candidate.stateObj?.attributes?.translation_key || "").toLowerCase();
+            const uniqueId = String(candidate.stateObj?.attributes?.unique_id || "").toLowerCase();
+            let score = 0;
+            let matchedBorderTokenCount = 0;
+
+            if (entityIdLower.includes("sunseeker")) {
+                score += 2;
+            }
+
+            if (translationKey === "sunseeker_border") {
+                score += 12;
+            }
+
+            borderTokens.forEach((token) => {
+                if (
+                    entityIdLower.includes(token)
+                    || friendlyName.includes(token)
+                    || translationKey.includes(token)
+                    || uniqueId.includes(token)
+                ) {
+                    matchedBorderTokenCount += 1;
+                    score += 4;
+                }
+            });
+
+            const hasBorderSignal = translationKey === "sunseeker_border" || matchedBorderTokenCount > 0;
+            if (!hasBorderSignal) {
+                return;
+            }
+
+            const mowerObjectIdLower = mowerObjectId.toLowerCase();
+            const hasMowerIdMatch = !!mowerObjectIdLower && (
+                entityIdLower.includes(mowerObjectIdLower)
+                || friendlyName.includes(mowerObjectIdLower)
+                || translationKey.includes(mowerObjectIdLower)
+                || uniqueId.includes(mowerObjectIdLower)
+            );
+            if (!hasMowerIdMatch) {
+                return;
+            }
+
+            if (mowerObjectId && entityIdLower.includes(mowerObjectId.toLowerCase())) {
+                score += 6;
+            }
+
+            hintTokens.forEach((token) => {
+                if (
+                    entityIdLower.includes(token)
+                    || friendlyName.includes(token)
+                    || translationKey.includes(token)
+                ) {
+                    score += 2;
+                }
+            });
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = candidate;
+            }
+        });
+
+        return bestScore > 0 ? (bestCandidate?.entityId || "") : "";
+    }
 
     async render() {
         if (!this._hass) return;
+                const borderActionEntity = this._findBorderButtonEntity();
+                const hasBorderActionButton = !!borderActionEntity;
         if (!customElements.get("ha-entity-picker")) {
           await customElements.get("hui-entities-card").getConfigElement();
         }
@@ -1253,6 +1526,18 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                     ${_t("show_text", this._hass)}
                 </label>
                 <br />
+                ${hasBorderActionButton ? `
+                <label>
+                    <input
+                        type="checkbox"
+                        id="show_border"
+                        ${this._showBorder ? "checked" : ""}
+                    />
+                    ${_t("show_border", this._hass)}
+                </label>
+                <div>${_t("border_entity", this._hass)}: ${borderActionEntity}</div>
+                <br />
+                ` : ""}
 
                 <br />
                 Version 1.0.12
@@ -1318,6 +1603,13 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
             this._config = { ...this._config, show_text: ev.target.checked };
             this._fireConfigChanged();
         };
+        const showBorderInput = this.querySelector("#show_border");
+        if (showBorderInput) {
+            showBorderInput.onchange = (ev) => {
+                this._config = { ...this._config, show_border: ev.target.checked };
+                this._fireConfigChanged();
+            };
+        }
         this.querySelector("#model").onchange = (ev) => {
             this._config = { ...this._config, model: ev.target.value };
             this._fireConfigChanged();
