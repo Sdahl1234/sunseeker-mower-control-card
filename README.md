@@ -95,6 +95,7 @@ show_border: false
 
 | Version | Notes |
 |---|---|
+| 1.0.14 | Made the draw overlay lazy so it is only created when Mow area drawing is used. |
 | 1.0.13 | Added map position setting (`map_position`: top/left/right). |
 | 1.0.12 | Added optional Border button with editor toggle (`show_border`, default off) and layout spacing fixes for header/map combinations and zone/state spacing behavior. |
 | 1.0.11 | Added Finnish and Polish language |

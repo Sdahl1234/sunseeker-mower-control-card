@@ -782,10 +782,17 @@ class SunseekerMowerControlCard extends HTMLElement {
 
     _renderDrawOverlay() {
         const overlay = this.shadowRoot?.getElementById("draw-overlay");
-        const bounds = this._getMapBounds();
         if (!overlay) {
             return;
         }
+
+        if (!this._drawEnabled && this._drawPoints.length === 0) {
+            overlay.classList.remove("is-enabled");
+            overlay.innerHTML = "";
+            return;
+        }
+
+        const bounds = this._getMapBounds();
 
         overlay.classList.toggle("is-enabled", this._isModelX() && this._drawEnabled && !!bounds);
 
@@ -828,8 +835,10 @@ class SunseekerMowerControlCard extends HTMLElement {
         const drawControls = this.shadowRoot?.getElementById("draw-controls");
         const zoneButtonsContainer = this.shadowRoot?.getElementById("zone-buttons");
         const mowerBlock = this.shadowRoot?.querySelector(".mower-block");
-        const hasMap = !!this._getMapBounds();
         const supportsDrawing = this._isModelX();
+        const hasMap = supportsDrawing && (this._drawEnabled || this._drawPoints.length > 0)
+            ? !!this._getMapBounds()
+            : !!this._cameraEntity;
         const showDrawControls = supportsDrawing && hasMap && this._drawEnabled;
 
         if (sendBtn) {
@@ -873,8 +882,34 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (!this._drawEnabled) {
             this._drawCursorPoint = null;
         }
+        this._ensureDrawOverlay();
         this._renderDrawOverlay();
         this._updateDrawControls();
+    }
+
+    _ensureDrawOverlay() {
+        const mapWrapper = this.shadowRoot?.querySelector(".map-wrapper");
+        if (!mapWrapper || this.shadowRoot?.getElementById("draw-overlay")) {
+            return;
+        }
+
+        if (!this._isModelX() || (!this._drawEnabled && this._drawPoints.length === 0)) {
+            return;
+        }
+
+        const mapOverlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        mapOverlay.setAttribute("id", "draw-overlay");
+        mapOverlay.setAttribute("class", "map-overlay");
+        mapOverlay.addEventListener("click", (event) => this._onDrawOverlayClick(event));
+        mapOverlay.addEventListener("pointermove", (event) => this._onDrawOverlayPointerMove(event));
+        mapOverlay.addEventListener("pointerleave", () => this._onDrawOverlayPointerLeave());
+        mapWrapper.appendChild(mapOverlay);
+
+        if (this._overlayResizeObserver) {
+            this._overlayResizeObserver.disconnect();
+        }
+        this._overlayResizeObserver = new ResizeObserver(() => this._renderDrawOverlay());
+        this._overlayResizeObserver.observe(mapWrapper);
     }
 
     _clearDrawPoints() {
@@ -1196,19 +1231,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             mapWrapper.className = "map-wrapper";
             mapWrapper.appendChild(pictureCard);
 
-            const mapOverlay = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-            mapOverlay.setAttribute("id", "draw-overlay");
-            mapOverlay.setAttribute("class", "map-overlay");
-            mapOverlay.addEventListener("click", (event) => this._onDrawOverlayClick(event));
-            mapOverlay.addEventListener("pointermove", (event) => this._onDrawOverlayPointerMove(event));
-            mapOverlay.addEventListener("pointerleave", () => this._onDrawOverlayPointerLeave());
-            mapWrapper.appendChild(mapOverlay);
-
-            if (this._overlayResizeObserver) {
-                this._overlayResizeObserver.disconnect();
-            }
-            this._overlayResizeObserver = new ResizeObserver(() => this._renderDrawOverlay());
-            this._overlayResizeObserver.observe(mapWrapper);
+            this._ensureDrawOverlay();
         }
 
         // Add mower controls below the picture card
@@ -1322,6 +1345,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         }
 
         this._updateDrawControls();
+        this._ensureDrawOverlay();
         requestAnimationFrame(() => this._renderDrawOverlay());
 
         // Attach event handlers for zone buttons
@@ -1379,6 +1403,7 @@ class SunseekerMowerControlCard extends HTMLElement {
             borderBtn.disabled = !this._borderButtonEntity;
         }
         this._updateDrawControls();
+        this._ensureDrawOverlay();
         this._renderDrawOverlay();
         this._updateZoneButtons();
     }
@@ -1635,7 +1660,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 ` : ""}
 
                 <br />
-                Version 1.0.13
+                Version 1.0.14
             </div>
         `;
 
