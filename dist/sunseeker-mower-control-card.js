@@ -18,6 +18,8 @@ const TRANSLATIONS = {
         mower_entity: "Mower entity",
         zone_entity: "Zone select entity",
         camera_entity: "Camera/Image entity",
+        camera_live_mode: "Use live camera mode",
+        camera_refresh_seconds: "Camera refresh interval (seconds)",
         map_position: "Map position",
         map_position_top: "Top",
         map_position_left: "Left",
@@ -369,6 +371,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._entity = "";
         this._zoneEntity = "";
         this._cameraEntity = "";
+        this._cameraLiveMode = true;
+        this._cameraRefreshSeconds = 3;
         this._hass = null;
         this._zones = [];
         this._selectedZones = [];
@@ -380,7 +384,19 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._borderButtonEntity = "";
         this._mapPosition = "top";
         this._overlayResizeObserver = null;
+        this._cameraRefreshTimer = null;
         this._initialized = false;
+    }
+
+    disconnectedCallback() {
+        if (this._overlayResizeObserver) {
+            this._overlayResizeObserver.disconnect();
+            this._overlayResizeObserver = null;
+        }
+        if (this._cameraRefreshTimer) {
+            clearInterval(this._cameraRefreshTimer);
+            this._cameraRefreshTimer = null;
+        }
     }
 
     static getConfigElement() {
@@ -396,6 +412,8 @@ class SunseekerMowerControlCard extends HTMLElement {
             entity: mower,
             zone_entity: zone,
             camera_entity: camera,
+            camera_live_mode: true,
+            camera_refresh_seconds: 3,
             map_position: "top",
             model: "x",
             header: TRANSLATIONS[hass?.language || "en"].header,
@@ -409,6 +427,8 @@ class SunseekerMowerControlCard extends HTMLElement {
         this._entity = config.entity;
         this._zoneEntity = config.zone_entity;
         this._cameraEntity = config.camera_entity;
+        this._cameraLiveMode = config.camera_live_mode !== false;
+        this._cameraRefreshSeconds = this._normalizeCameraRefreshSeconds(config.camera_refresh_seconds);
         this._mapPosition = this._normalizeMapPosition(config.map_position);
         this._header = config.header || TRANSLATIONS["en"].header;
         this._model = (config.model || "x").toLowerCase() === "v" ? "v" : "x";
@@ -431,6 +451,49 @@ class SunseekerMowerControlCard extends HTMLElement {
 
     _normalizeMapPosition(value) {
         return value === "left" || value === "right" ? value : "top";
+    }
+
+    _normalizeCameraRefreshSeconds(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return 3;
+        }
+        return Math.min(30, Math.max(1, Math.round(parsed)));
+    }
+
+    _appendCacheBuster(url) {
+        const separator = url.includes("?") ? "&" : "?";
+        return `${url}${separator}_=${Date.now()}`;
+    }
+
+    _getCameraEntityPictureUrl(addCacheBuster = false) {
+        if (!this._hass || !this._cameraEntity || !this._cameraEntity.startsWith("camera.")) {
+            return "";
+        }
+        const stateObj = this._hass.states?.[this._cameraEntity];
+        const entityPicture = stateObj?.attributes?.entity_picture;
+        if (!entityPicture || typeof entityPicture !== "string") {
+            return "";
+        }
+
+        let baseUrl = entityPicture;
+        if (entityPicture.startsWith("/")) {
+            baseUrl = this._hass.hassUrl ? this._hass.hassUrl(entityPicture) : entityPicture;
+        }
+
+        return addCacheBuster ? this._appendCacheBuster(baseUrl) : baseUrl;
+    }
+
+    _refreshStillCameraImage() {
+        const stillImage = this.shadowRoot?.getElementById("camera-still-image");
+        if (!stillImage) {
+            return;
+        }
+
+        const nextUrl = this._getCameraEntityPictureUrl(true);
+        if (nextUrl) {
+            stillImage.src = nextUrl;
+        }
     }
 
     set hass(hass) {
@@ -977,6 +1040,10 @@ class SunseekerMowerControlCard extends HTMLElement {
 
     async _render() {
         if (!this.shadowRoot) return;
+        if (this._cameraRefreshTimer) {
+            clearInterval(this._cameraRefreshTimer);
+            this._cameraRefreshTimer = null;
+        }
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -1100,6 +1167,12 @@ class SunseekerMowerControlCard extends HTMLElement {
                     border-radius: 12px;
                     overflow: hidden;
                 }
+                .camera-still-image {
+                    display: block;
+                    width: 100%;
+                    height: auto;
+                    object-fit: contain;
+                }
                 .content-body {
                     display: block;
                 }
@@ -1203,33 +1276,54 @@ class SunseekerMowerControlCard extends HTMLElement {
         let pictureCard = null;
         let mapWrapper = null;
         if (this._cameraEntity && typeof this._cameraEntity === "string" && this._cameraEntity.trim() !== "") {
-            const cardConfig = {
-                type: "picture-entity",
-                entity: this._cameraEntity,
-                show_name: false,
-                show_state: false,
-                camera_view: "live",
-            };
-
-            if (!window.cardHelpers) {
-                window.cardHelpers = await window.loadCardHelpers();
-            }
-
-            if (window.cardHelpers && window.cardHelpers.createCardElement) {
-                pictureCard = await window.cardHelpers.createCardElement(cardConfig);
-            } else if (window.createCardElement) {
-                pictureCard = window.createCardElement(cardConfig);
-            } else {
-                pictureCard = document.createElement("hui-picture-entity-card");
-                if (pictureCard.setConfig) {
-                    pictureCard.setConfig(cardConfig);
-                }
-            }
-            pictureCard.hass = this._hass;
-
+            const isCameraEntity = this._cameraEntity.startsWith("camera.");
             mapWrapper = document.createElement("div");
             mapWrapper.className = "map-wrapper";
-            mapWrapper.appendChild(pictureCard);
+
+            if (isCameraEntity && !this._cameraLiveMode) {
+                const stillImage = document.createElement("img");
+                stillImage.id = "camera-still-image";
+                stillImage.className = "camera-still-image";
+                stillImage.alt = "Sunseeker live map";
+                const initialUrl = this._getCameraEntityPictureUrl(true);
+                if (initialUrl) {
+                    stillImage.src = initialUrl;
+                }
+                mapWrapper.appendChild(stillImage);
+                this._cameraRefreshTimer = setInterval(
+                    () => this._refreshStillCameraImage(),
+                    this._cameraRefreshSeconds * 1000,
+                );
+            } else {
+                const cardConfig = {
+                    type: "picture-entity",
+                    entity: this._cameraEntity,
+                    show_name: false,
+                    show_state: false,
+                    aspect_ratio: "auto",
+                };
+
+                if (isCameraEntity && this._cameraLiveMode) {
+                    cardConfig.camera_view = "live";
+                }
+
+                if (!window.cardHelpers) {
+                    window.cardHelpers = await window.loadCardHelpers();
+                }
+
+                if (window.cardHelpers && window.cardHelpers.createCardElement) {
+                    pictureCard = await window.cardHelpers.createCardElement(cardConfig);
+                } else if (window.createCardElement) {
+                    pictureCard = window.createCardElement(cardConfig);
+                } else {
+                    pictureCard = document.createElement("hui-picture-entity-card");
+                    if (pictureCard.setConfig) {
+                        pictureCard.setConfig(cardConfig);
+                    }
+                }
+                pictureCard.hass = this._hass;
+                mapWrapper.appendChild(pictureCard);
+            }
 
             this._ensureDrawOverlay();
         }
@@ -1402,6 +1496,7 @@ class SunseekerMowerControlCard extends HTMLElement {
         if (borderBtn) {
             borderBtn.disabled = !this._borderButtonEntity;
         }
+        this._refreshStillCameraImage();
         this._updateDrawControls();
         this._ensureDrawOverlay();
         this._renderDrawOverlay();
@@ -1433,6 +1528,16 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
     }
     get _cameraEntity() {
         return this._config?.camera_entity || "";
+    }
+    get _cameraLiveMode() {
+        return this._config?.camera_live_mode !== false;
+    }
+    get _cameraRefreshSeconds() {
+        const parsed = Number(this._config?.camera_refresh_seconds);
+        if (!Number.isFinite(parsed)) {
+            return 3;
+        }
+        return Math.min(30, Math.max(1, Math.round(parsed)));
     }
     get _mapPosition() {
         return this._config?.map_position === "left" || this._config?.map_position === "right"
@@ -1598,6 +1703,25 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 <label for="camera_entity">${_t("camera_entity", this._hass)}</label>
                 <span id="picker-camera"></span>
                 <br />
+                <label>
+                    <input
+                        type="checkbox"
+                        id="camera_live_mode"
+                        ${this._cameraLiveMode ? "checked" : ""}
+                    />
+                    ${_t("camera_live_mode", this._hass)}
+                </label>
+                <br />
+                <label for="camera_refresh_seconds">${_t("camera_refresh_seconds", this._hass)}</label>
+                <input
+                    type="number"
+                    id="camera_refresh_seconds"
+                    min="1"
+                    max="30"
+                    step="1"
+                    value="${this._cameraRefreshSeconds}"
+                />
+                <br />
                 <label for="map_position">${_t("map_position", this._hass)}</label>
                 <select id="map_position">
                     <option value="top" ${this._mapPosition === "top" ? "selected" : ""}>${_t("map_position_top", this._hass)}</option>
@@ -1660,7 +1784,7 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
                 ` : ""}
 
                 <br />
-                Version 1.0.14
+                Version 1.0.15
             </div>
         `;
 
@@ -1726,6 +1850,15 @@ class SunseekerMowerControlCardEditor extends HTMLElement {
         this.querySelector("#map_position").onchange = (ev) => {
             const nextMapPosition = ev.target.value === "left" || ev.target.value === "right" ? ev.target.value : "top";
             this._config = { ...this._config, map_position: nextMapPosition };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#camera_live_mode").onchange = (ev) => {
+            this._config = { ...this._config, camera_live_mode: ev.target.checked };
+            this._fireConfigChanged();
+        };
+        this.querySelector("#camera_refresh_seconds").onchange = (ev) => {
+            const nextSeconds = Math.min(30, Math.max(1, Number(ev.target.value) || 3));
+            this._config = { ...this._config, camera_refresh_seconds: nextSeconds };
             this._fireConfigChanged();
         };
         const showBorderInput = this.querySelector("#show_border");
