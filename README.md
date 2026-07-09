@@ -58,6 +58,8 @@ A custom Lovelace card for the [Sunseeker](https://www.home-assistant.io/integra
 | `entity` | `string` | **required** | Entity ID of the Sunseeker lawn mower (e.g. `lawn_mower.sunseeker`). |
 | `zone_entity` | `string` | — | Entity ID of the zone select entity (e.g. `select.sunseeker_zone`). Used to populate zone buttons. |
 | `camera_entity` | `string` | — | Entity ID of the camera or image entity for the map view (e.g. `image.sunseeker_mower_map`). Auto-discovered if omitted. |
+| `camera_live_mode` | `boolean` | `true` | For `camera.*` entities, enable Home Assistant live camera mode. Disable if your camera map is cropped; the card will then use full-frame still-image rendering with periodic refresh updates. |
+| `camera_refresh_seconds` | `number` | `3` | Refresh interval in seconds for non-live camera mode (`camera_live_mode: false`). Range: `1` to `30`. |
 | `map_position` | `string` | `"top"` | Position of the map relative to controls: `"top"`, `"left"`, or `"right"`. |
 | `model` | `string` | `"x"` | Mower model. `"x"` enables the area-drawing tool and End task button; `"v"` shows standard controls only. |
 | `header` | `string` | `"Mower Control"` | Card header title (localised default used when omitted). |
@@ -80,6 +82,8 @@ type: custom:sunseeker-mower-control-card
 entity: lawn_mower.sunseeker
 zone_entity: select.sunseeker_zone
 camera_entity: image.sunseeker_mower_map
+camera_live_mode: true
+camera_refresh_seconds: 3
 map_position: top
 model: x
 header: Mower Control
@@ -95,6 +99,7 @@ show_border: false
 
 | Version | Notes |
 |---|---|
+| 1.0.15 | Added `camera_live_mode` setting (default `true`) so live camera updates remain enabled by default, with an option to disable live mode for cropped tall camera maps while keeping periodic map refresh updates. Added `camera_refresh_seconds` setting (`1`-`30`, default `3`) to control periodic refresh when live mode is disabled. |
 | 1.0.14 | Made the draw overlay lazy so it is only created when Mow area drawing is used. |
 | 1.0.13 | Added map position setting (`map_position`: top/left/right). |
 | 1.0.12 | Added optional Border button with editor toggle (`show_border`, default off) and layout spacing fixes for header/map combinations and zone/state spacing behavior. |
